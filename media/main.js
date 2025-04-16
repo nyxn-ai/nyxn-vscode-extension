@@ -7,25 +7,45 @@
     const chatContainer = document.getElementById('chat-container');
     const userInput = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
+    const sendButtonBackup = document.getElementById('send-button-backup');
+    const messageForm = document.getElementById('message-form');
+    const messageInput = document.getElementById('message-input');
     const clearButton = document.getElementById('clear-button');
     const contextButton = document.getElementById('context-button');
     const toolResults = document.getElementById('tool-results');
     const toolContent = document.getElementById('tool-content');
     const closeToolResults = document.getElementById('close-tool-results');
 
+    console.log('DOM elements loaded:');
+    console.log('- chatContainer:', !!chatContainer);
+    console.log('- userInput:', !!userInput);
+    console.log('- sendButton:', !!sendButton);
+    console.log('- sendButtonBackup:', !!sendButtonBackup);
+    console.log('- messageForm:', !!messageForm);
+    console.log('- clearButton:', !!clearButton);
+
     // Initialize
     let isLoading = false;
 
     // Send message
     function sendMessage() {
+        console.log('Send button clicked');
         const text = userInput.value.trim();
+        console.log('User input text:', text);
+        console.log('isLoading state:', isLoading);
+
         if (text && !isLoading) {
             try {
                 console.log('Sending message to extension...');
+                // Debug: Check if vscode API is available
+                console.log('vscode API available:', !!vscode);
+
                 vscode.postMessage({
                     command: 'sendMessage',
                     text: text
                 });
+                console.log('Message posted to extension');
+
                 userInput.value = '';
                 // Show visual feedback for successful send
                 sendButton.textContent = 'Sent';
@@ -37,18 +57,73 @@
                 showError(`Error sending message: ${error.message}`);
             }
         } else if (isLoading) {
+            console.log('Cannot send: loading in progress');
             showError('Loading in progress, please try again later');
         } else {
+            console.log('Cannot send: empty message');
             showError('Please enter a message');
         }
     }
 
     // Listen for Send button click
-    sendButton.addEventListener('click', sendMessage);
+    console.log('Adding click event listener to send button');
+    console.log('Send button element:', sendButton);
+
+    // Try different ways to add the event listener
+    sendButton.addEventListener('click', function(event) {
+        console.log('Send button clicked (from event listener)');
+        console.log('Event details:', event.type);
+        sendMessage();
+    });
+
+    // Also add mousedown event as a fallback
+    sendButton.addEventListener('mousedown', function(event) {
+        console.log('Send button mousedown event detected');
+        sendMessage();
+    });
+
+    // Add event listeners to backup button
+    if (sendButtonBackup) {
+        console.log('Adding event listeners to backup button');
+        sendButtonBackup.addEventListener('click', function(event) {
+            console.log('Backup send button clicked');
+            sendMessage();
+        });
+
+        sendButtonBackup.addEventListener('mousedown', function(event) {
+            console.log('Backup send button mousedown detected');
+            sendMessage();
+        });
+    } else {
+        console.error('Backup send button not found');
+    }
+
+    // Add form submit event listener
+    if (messageForm) {
+        console.log('Adding submit event listener to form');
+        messageForm.style.display = 'block'; // Make form visible for testing
+
+        messageForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            console.log('Form submitted');
+
+            const text = messageInput.value.trim();
+            if (text) {
+                console.log('Sending message from form:', text);
+                vscode.postMessage({
+                    command: 'sendMessage',
+                    text: text
+                });
+                messageInput.value = '';
+            }
+        });
+    }
 
     // Listen for Enter key
     userInput.addEventListener('keydown', (e) => {
+        console.log('Key pressed:', e.key);
         if (e.key === 'Enter' && !e.shiftKey) {
+            console.log('Enter key pressed (without shift)');
             e.preventDefault();
             sendMessage();
         }
@@ -415,4 +490,28 @@
     vscode.postMessage({
         command: 'getCodeContext'
     });
+
+    // Global error handler
+    window.onerror = function(message, source, lineno, colno, error) {
+        console.error('Global error caught:', message);
+        console.error('Error details:', error);
+        showError(`Error: ${message}`);
+        return true; // Prevents the default error handling
+    };
+
+    // Add a direct test button to the DOM
+    const testButton = document.createElement('button');
+    testButton.textContent = 'Test Direct Send';
+    testButton.style.position = 'fixed';
+    testButton.style.bottom = '10px';
+    testButton.style.left = '10px';
+    testButton.style.zIndex = '1000';
+    testButton.onclick = function() {
+        console.log('Test button clicked');
+        vscode.postMessage({
+            command: 'sendMessage',
+            text: 'This is a test message from the direct test button'
+        });
+    };
+    document.body.appendChild(testButton);
 });

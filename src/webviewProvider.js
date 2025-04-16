@@ -20,22 +20,28 @@ class NyxnWebviewProvider {
      * @param {vscode.ExtensionContext} context Extension context
      */
     constructor(context) {
+        console.log('Initializing NyxnWebviewProvider...');
         this.context = context;
 
         // Initialize tool manager
+        console.log('Creating ToolManager...');
         this.toolManager = new ToolManager();
 
         // Initialize context manager
+        console.log('Creating ContextManager...');
         this.contextManager = new ContextManager(context);
 
         // Initialize tools
+        console.log('Initializing tools...');
         this.initializeTools();
 
         // Initialize Gemini service
+        console.log('Creating GeminiService...');
         this.geminiService = new GeminiService(this.toolManager, this.contextManager);
 
         this._view = null;
         this.chatHistory = [];
+        console.log('NyxnWebviewProvider initialized successfully');
     }
 
     /**
@@ -56,7 +62,10 @@ class NyxnWebviewProvider {
     }
 
     resolveWebviewView(webviewView) {
+        console.log('Resolving webview view...');
         this._view = webviewView;
+
+        console.log('Setting webview options...');
         webviewView.webview.options = {
             enableScripts: true,
             localResourceRoots: [
@@ -65,12 +74,21 @@ class NyxnWebviewProvider {
         };
 
         // Set HTML content
-        webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+        console.log('Setting HTML content...');
+        const html = this._getHtmlForWebview(webviewView.webview);
+        console.log(`Generated HTML content (length: ${html.length})`);
+        webviewView.webview.html = html;
+        console.log('HTML content set successfully');
 
         // Handle messages from Webview
+        console.log('Setting up message handler for webview');
         webviewView.webview.onDidReceiveMessage(async (message) => {
+            console.log('Received message from webview:', message);
+            console.log('Message command:', message.command);
+
             switch (message.command) {
                 case 'sendMessage':
+                    console.log('Processing sendMessage command with text:', message.text);
                     await this._handleUserMessage(message.text);
                     break;
 
@@ -299,7 +317,7 @@ class NyxnWebviewProvider {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}'; connect-src vscode-webview-resource:; img-src ${webview.cspSource} https:;">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}' 'unsafe-inline'; connect-src vscode-webview-resource:; img-src ${webview.cspSource} https:;">
             <link href="${styleUri}" rel="stylesheet">
             <title>Nyxn AI Assistant</title>
         </head>
@@ -318,9 +336,16 @@ class NyxnWebviewProvider {
                 <div class="input-container">
                     <textarea id="user-input" placeholder="Enter your question or request..."></textarea>
                     <div class="button-container">
-                        <button id="send-button">Send</button>
+                        <button id="send-button" type="button" class="send-button-class" onclick="sendMessage()">Send</button>
+                        <button id="send-button-backup" type="button" class="send-button-class" style="margin-left: 5px;">Send (Backup)</button>
                     </div>
                 </div>
+
+                <!-- Add a simple form as another fallback -->
+                <form id="message-form" style="display: none;">
+                    <input type="text" id="message-input" />
+                    <input type="submit" value="Send Form" />
+                </form>
 
                 <div id="tool-results" class="tool-results hidden">
                     <div class="tool-header">
