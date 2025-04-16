@@ -46,6 +46,8 @@ body {
     border-top: 1px solid var(--vscode-panel-border);
     background-color: var(--vscode-tab-activeBackground);
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+    z-index: 50; /* Ensure container is above other elements */
+    position: relative; /* Enable z-index */
 }
 
 #user-input {
@@ -113,9 +115,10 @@ button:disabled {
     color: var(--vscode-button-prominentForeground, var(--vscode-button-foreground));
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     transition: all 0.3s ease;
-    cursor: pointer;
-    z-index: 10; /* Ensure button is above other elements */
+    cursor: pointer !important;
+    z-index: 100; /* Ensure button is above other elements */
     position: relative; /* Enable z-index */
+    pointer-events: auto !important; /* Force pointer events */
 }
 
 .button-container {
@@ -124,6 +127,9 @@ button:disabled {
     justify-content: center;
     min-width: 90px; /* Ensure container is wide enough */
     min-height: 40px; /* Ensure container is tall enough */
+    z-index: 100; /* Ensure container is above other elements */
+    position: relative; /* Enable z-index */
+    pointer-events: auto !important; /* Force pointer events */
 }
 
 .message {
@@ -230,6 +236,17 @@ code {
     40% {
         transform: scale(1);
     }
+}
+
+/* Fix for send button */
+#send-button::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    z-index: -1;
 }
 
 /* Tool related styles */

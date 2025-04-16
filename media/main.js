@@ -3,19 +3,27 @@
     // Get VS Code API
     const vscode = acquireVsCodeApi();
     console.log('VS Code API acquired');
-    
+
+    // Add global backup send function
+    window.sendMessageFromBackup = function() {
+        console.log('Backup send button clicked');
+        if (window.sendMessageFunction) {
+            window.sendMessageFunction();
+        }
+    };
+
     // Wait for DOM to be fully loaded
     document.addEventListener('DOMContentLoaded', initializeApp);
-    
+
     // If DOMContentLoaded already fired, initialize immediately
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
         console.log('DOM already loaded, initializing immediately');
         initializeApp();
     }
-    
+
     function initializeApp() {
         console.log('Initializing application...');
-        
+
         // Get DOM elements with error checking
         const chatContainer = document.getElementById('chat-container');
         const userInput = document.getElementById('user-input');
@@ -34,27 +42,27 @@
             console.error('- sendButton:', !!sendButton);
             return; // Exit initialization if critical elements are missing
         }
-        
+
         console.log('DOM elements loaded successfully:');
         console.log('- chatContainer:', !!chatContainer);
         console.log('- userInput:', !!userInput);
         console.log('- sendButton:', !!sendButton);
         console.log('- clearButton:', !!clearButton);
-        
+
         // Initialize
         let isLoading = false;
 
         // Enhanced send message function with better error handling
         function sendMessage() {
             console.log('Send button clicked - sendMessage function called');
-            
+
             // Validate input and state
             if (!userInput) {
                 console.error('User input element not found');
                 showError('Internal error: Input element not found');
                 return;
             }
-            
+
             const text = userInput.value.trim();
             console.log('User input text:', text);
             console.log('isLoading state:', isLoading);
@@ -82,14 +90,14 @@
                     setTimeout(() => {
                         sendButton.textContent = 'Send';
                     }, 1000);
-                    
+
                     // Add user message to UI immediately for better UX
                     const tempMessage = {
                         role: 'user',
                         content: text
                     };
                     updateChat([...document.querySelectorAll('.message').length ? [] : [], tempMessage]);
-                    
+
                 } catch (error) {
                     console.error('Error sending message:', error);
                     showError(`Error sending message: ${error.message}`);
@@ -107,24 +115,49 @@
         console.log('Adding click event listener to send button');
         console.log('Send button element:', sendButton);
 
-        // Enhanced event listeners for send button
-        // Use multiple event types to ensure the click is captured
-        ['click', 'mousedown'].forEach(eventType => {
-            sendButton.addEventListener(eventType, function(event) {
-                console.log(`Send button ${eventType} event detected`);
-                event.preventDefault();
-                event.stopPropagation();
-                sendMessage();
-            }, true); // Use capturing phase
-        });
-        
-        // Add a direct onclick handler as a fallback
-        sendButton.onclick = function(event) {
-            console.log('Send button onclick handler triggered');
+        // Enhanced event listeners for send button with additional debugging
+        console.log('Adding enhanced event listeners to send button');
+
+        // Create a more robust click handler
+        function handleSendButtonClick(event) {
+            console.log('Send button click handler called');
+            console.log('Event type:', event.type);
+            console.log('Event target:', event.target);
+            console.log('Current target:', event.currentTarget);
+
+            // Prevent default behavior and stop propagation
             event.preventDefault();
+            event.stopPropagation();
+
+            // Call sendMessage function
             sendMessage();
+
+            // Return false to ensure the event is completely handled
             return false;
-        };
+        }
+
+        // Add multiple event types to ensure the click is captured
+        ['click', 'mousedown', 'mouseup', 'touchstart', 'touchend'].forEach(eventType => {
+            sendButton.addEventListener(eventType, handleSendButtonClick, true);
+        });
+
+        // Add direct property handlers as fallbacks
+        sendButton.onclick = handleSendButtonClick;
+        sendButton.onmousedown = handleSendButtonClick;
+        sendButton.onmouseup = handleSendButtonClick;
+
+        // Add a direct click method call as a final fallback
+        setTimeout(() => {
+            console.log('Adding click method to send button');
+            if (typeof sendButton.click === 'function') {
+                const originalClick = sendButton.click;
+                sendButton.click = function() {
+                    console.log('Send button click method called');
+                    handleSendButtonClick({type: 'click', preventDefault: () => {}, stopPropagation: () => {}, target: sendButton, currentTarget: sendButton});
+                    return originalClick.apply(this, arguments);
+                };
+            }
+        }, 1000);
 
         // Listen for Enter key
         userInput.addEventListener('keydown', (e) => {
@@ -505,7 +538,7 @@
             showError(`Error: ${message}`);
             return true; // Prevents the default error handling
         };
-    
+
     } // End of initializeApp function
 
     // No test button
