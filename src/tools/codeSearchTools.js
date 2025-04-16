@@ -2,21 +2,21 @@ const vscode = require('vscode');
 const path = require('path');
 
 /**
- * 代码搜索工具集
- * 提供代码搜索、符号查找等功能
+ * Code search tools
+ * Provides code search, symbol finding, and other functionality
  */
 class CodeSearchTools {
     /**
-     * 初始化代码搜索工具
-     * @param {vscode.ExtensionContext} context 扩展上下文
+     * Initialize code search tools
+     * @param {vscode.ExtensionContext} context Extension context
      */
     constructor(context) {
         this.context = context;
     }
 
     /**
-     * 获取工作区根路径
-     * @returns {string|null} 工作区根路径
+     * Get workspace root path
+     * @returns {string|null} Workspace root path
      */
     getWorkspaceRoot() {
         const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -27,59 +27,59 @@ class CodeSearchTools {
     }
 
     /**
-     * 搜索代码
-     * @param {Object} params 参数对象
-     * @param {string} params.query 搜索查询
-     * @param {string} [params.include] 包含模式
-     * @param {string} [params.exclude] 排除模式
-     * @param {boolean} [params.case_sensitive=false] 是否区分大小写
-     * @param {boolean} [params.whole_word=false] 是否全字匹配
-     * @param {boolean} [params.regex=false] 是否使用正则表达式
-     * @returns {Promise<Array>} 搜索结果
+     * Search code
+     * @param {Object} params Parameters object
+     * @param {string} params.query Search query
+     * @param {string} [params.include] Include pattern
+     * @param {string} [params.exclude] Exclude pattern
+     * @param {boolean} [params.case_sensitive=false] Whether to be case sensitive
+     * @param {boolean} [params.whole_word=false] Whether to match whole words
+     * @param {boolean} [params.regex=false] Whether to use regular expressions
+     * @returns {Promise<Array>} Search results
      */
     async searchCode(params) {
         try {
-            const { 
-                query, 
-                include, 
-                exclude, 
-                case_sensitive = false, 
-                whole_word = false, 
-                regex = false 
+            const {
+                query,
+                include,
+                exclude,
+                case_sensitive = false,
+                whole_word = false,
+                regex = false
             } = params;
-            
+
             if (!query) {
                 throw new Error('Search query is required');
             }
-            
-            // 创建搜索选项
+
+            // Create search options
             const searchOptions = {
                 pattern: query,
                 isCaseSensitive: case_sensitive,
                 isWordMatch: whole_word,
                 isRegExp: regex,
             };
-            
+
             if (include) {
                 searchOptions.includes = [include];
             }
-            
+
             if (exclude) {
                 searchOptions.excludes = [exclude];
             }
-            
-            // 执行搜索
+
+            // Execute search
             const results = await vscode.workspace.findTextInFiles(searchOptions);
-            
-            // 格式化结果
+
+            // Format results
             const formattedResults = [];
             results.forEach((fileResults, uri) => {
                 const filePath = uri.fsPath;
                 const workspaceRoot = this.getWorkspaceRoot();
-                const relativePath = workspaceRoot 
+                const relativePath = workspaceRoot
                     ? path.relative(workspaceRoot, filePath)
                     : filePath;
-                
+
                 fileResults.matches.forEach(match => {
                     formattedResults.push({
                         file: relativePath,
@@ -92,7 +92,7 @@ class CodeSearchTools {
                     });
                 });
             });
-            
+
             return formattedResults;
         } catch (error) {
             throw new Error(`Failed to search code: ${error.message}`);
@@ -100,31 +100,31 @@ class CodeSearchTools {
     }
 
     /**
-     * 查找符号
-     * @param {Object} params 参数对象
-     * @param {string} params.query 符号查询
-     * @param {string} [params.kind] 符号类型
-     * @returns {Promise<Array>} 符号列表
+     * Find symbols
+     * @param {Object} params Parameters object
+     * @param {string} params.query Symbol query
+     * @param {string} [params.kind] Symbol kind
+     * @returns {Promise<Array>} Symbol list
      */
     async findSymbols(params) {
         try {
             const { query, kind } = params;
-            
+
             if (!query) {
                 throw new Error('Symbol query is required');
             }
-            
-            // 执行符号搜索
+
+            // Execute symbol search
             const symbols = await vscode.commands.executeCommand(
                 'vscode.executeWorkspaceSymbolProvider',
                 query
             );
-            
+
             if (!symbols || symbols.length === 0) {
                 return [];
             }
-            
-            // 过滤符号类型（如果指定）
+
+            // Filter symbol kind (if specified)
             let filteredSymbols = symbols;
             if (kind) {
                 const kindMap = {
@@ -137,21 +137,21 @@ class CodeSearchTools {
                     'property': vscode.SymbolKind.Property,
                     'constructor': vscode.SymbolKind.Constructor
                 };
-                
+
                 const kindValue = kindMap[kind.toLowerCase()];
                 if (kindValue) {
                     filteredSymbols = symbols.filter(symbol => symbol.kind === kindValue);
                 }
             }
-            
-            // 格式化结果
+
+            // Format results
             const workspaceRoot = this.getWorkspaceRoot();
             return filteredSymbols.map(symbol => {
                 const filePath = symbol.location.uri.fsPath;
-                const relativePath = workspaceRoot 
+                const relativePath = workspaceRoot
                     ? path.relative(workspaceRoot, filePath)
                     : filePath;
-                
+
                 return {
                     name: symbol.name,
                     kind: vscode.SymbolKind[symbol.kind],
@@ -175,40 +175,40 @@ class CodeSearchTools {
     }
 
     /**
-     * 获取文件中的符号
-     * @param {Object} params 参数对象
-     * @param {string} params.file_path 文件路径
-     * @returns {Promise<Array>} 符号列表
+     * Get symbols in a document
+     * @param {Object} params Parameters object
+     * @param {string} params.file_path File path
+     * @returns {Promise<Array>} Symbol list
      */
     async getDocumentSymbols(params) {
         try {
             const { file_path } = params;
-            
+
             if (!file_path) {
                 throw new Error('File path is required');
             }
-            
-            // 解析文件路径
+
+            // Resolve file path
             const workspaceRoot = this.getWorkspaceRoot();
             const fullPath = path.isAbsolute(file_path)
                 ? file_path
                 : path.join(workspaceRoot || '', file_path);
-            
-            // 打开文档
+
+            // Open document
             const uri = vscode.Uri.file(fullPath);
             const document = await vscode.workspace.openTextDocument(uri);
-            
-            // 获取文档符号
+
+            // Get document symbols
             const symbols = await vscode.commands.executeCommand(
                 'vscode.executeDocumentSymbolProvider',
                 uri
             );
-            
+
             if (!symbols || symbols.length === 0) {
                 return [];
             }
-            
-            // 递归格式化符号
+
+            // Recursively format symbols
             function formatSymbol(symbol) {
                 const result = {
                     name: symbol.name,
@@ -225,14 +225,14 @@ class CodeSearchTools {
                     },
                     detail: symbol.detail || null
                 };
-                
+
                 if (symbol.children && symbol.children.length > 0) {
                     result.children = symbol.children.map(formatSymbol);
                 }
-                
+
                 return result;
             }
-            
+
             return symbols.map(formatSymbol);
         } catch (error) {
             throw new Error(`Failed to get document symbols: ${error.message}`);
@@ -240,65 +240,65 @@ class CodeSearchTools {
     }
 
     /**
-     * 注册所有代码搜索工具
-     * @param {ToolManager} toolManager 工具管理器
+     * Register all code search tools
+     * @param {ToolManager} toolManager Tool manager
      */
     registerTools(toolManager) {
-        // 搜索代码
+        // Search code
         toolManager.registerTool('search-code', this.searchCode.bind(this), {
-            description: '在工作区中搜索代码',
+            description: 'Search code in workspace',
             parameters: {
                 query: {
                     type: 'string',
-                    description: '搜索查询'
+                    description: 'Search query'
                 },
                 include: {
                     type: 'string',
-                    description: '包含模式，例如 "**/*.js"'
+                    description: 'Include pattern, e.g. "**/*.js"'
                 },
                 exclude: {
                     type: 'string',
-                    description: '排除模式，例如 "**/node_modules/**"'
+                    description: 'Exclude pattern, e.g. "**/node_modules/**"'
                 },
                 case_sensitive: {
                     type: 'boolean',
-                    description: '是否区分大小写'
+                    description: 'Whether to be case sensitive'
                 },
                 whole_word: {
                     type: 'boolean',
-                    description: '是否全字匹配'
+                    description: 'Whether to match whole words'
                 },
                 regex: {
                     type: 'boolean',
-                    description: '是否使用正则表达式'
+                    description: 'Whether to use regular expressions'
                 }
             },
             required: ['query']
         });
-        
-        // 查找符号
+
+        // Find symbols
         toolManager.registerTool('find-symbols', this.findSymbols.bind(this), {
-            description: '在工作区中查找符号',
+            description: 'Find symbols in workspace',
             parameters: {
                 query: {
                     type: 'string',
-                    description: '符号查询'
+                    description: 'Symbol query'
                 },
                 kind: {
                     type: 'string',
-                    description: '符号类型，例如 "class", "function", "method", "variable"'
+                    description: 'Symbol kind, e.g. "class", "function", "method", "variable"'
                 }
             },
             required: ['query']
         });
-        
-        // 获取文档符号
+
+        // Get document symbols
         toolManager.registerTool('get-document-symbols', this.getDocumentSymbols.bind(this), {
-            description: '获取文件中的符号',
+            description: 'Get symbols in a file',
             parameters: {
                 file_path: {
                     type: 'string',
-                    description: '文件路径，可以是相对于工作区根目录的路径'
+                    description: 'File path, can be relative to workspace root'
                 }
             },
             required: ['file_path']

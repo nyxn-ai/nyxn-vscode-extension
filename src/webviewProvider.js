@@ -13,6 +13,9 @@ const ContextManager = require('./contextManager');
  */
 class NyxnWebviewProvider {
     /**
+     * @implements {vscode.WebviewViewProvider}
+     */
+    /**
      * Initialize Webview Provider
      * @param {vscode.ExtensionContext} context Extension context
      */
@@ -90,7 +93,7 @@ class NyxnWebviewProvider {
                         console.error('Error getting full context:', error);
                         webviewView.webview.postMessage({
                             command: 'error',
-                            message: `获取上下文失败: ${error.message}`
+                            message: `Failed to get context: ${error.message}`
                         });
                     }
                     break;
@@ -109,7 +112,7 @@ class NyxnWebviewProvider {
                     try {
                         const { toolName, parameters } = message;
                         if (!this.toolManager) {
-                            throw new Error('工具管理器未初始化');
+                            throw new Error('Tool manager not initialized');
                         }
 
                         const result = await this.toolManager.executeTool(toolName, parameters);
@@ -123,7 +126,7 @@ class NyxnWebviewProvider {
                         console.error('Error executing tool:', error);
                         webviewView.webview.postMessage({
                             command: 'error',
-                            message: `执行工具失败: ${error.message}`
+                            message: `Failed to execute tool: ${error.message}`
                         });
                     }
                     break;
@@ -138,60 +141,91 @@ class NyxnWebviewProvider {
     async _handleUserMessage(text) {
         if (!text.trim()) return;
 
+        console.log(`Received user message: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`);
+
         // Add user message to history
         this.chatHistory.push({ role: 'user', content: text });
         this._updateChatInWebview();
 
         // Show loading state
-        this._view.webview.postMessage({ command: 'startLoading' });
+        console.log('Showing loading state...');
+        if (this._view && this._view.webview) {
+            this._view.webview.postMessage({ command: 'startLoading' });
+        } else {
+            console.error('Cannot show loading state: webview not available');
+        }
 
         try {
             // Get full context
+            console.log('Getting context...');
             const context = await this.geminiService.getFullContext();
 
             // Call Gemini API
+            console.log('Calling Gemini API...');
             const response = await this.geminiService.generateContent(text, context, true);
+            console.log('Received Gemini API response');
 
             // Stop loading state
-            this._view.webview.postMessage({ command: 'stopLoading' });
+            console.log('Stopping loading state...');
+            if (this._view && this._view.webview) {
+                this._view.webview.postMessage({ command: 'stopLoading' });
+            }
 
             if (response.error) {
                 // Handle error
+                console.error(`Gemini API returned error: ${response.error}`);
                 this.chatHistory.push({ role: 'assistant', content: `Error: ${response.error}` });
             } else {
                 // Add AI response to history
+                console.log('Adding AI response to history...');
                 this.chatHistory.push({ role: 'assistant', content: response.text });
 
                 // If there are tool call results, show tool information
                 if (response.toolResults && response.toolResults.length > 0) {
+                    console.log(`Sending ${response.toolResults.length} tool results to frontend...`);
                     // Send tool results to frontend
-                    this._view.webview.postMessage({
-                        command: 'toolResults',
-                        results: response.toolResults
-                    });
+                    if (this._view && this._view.webview) {
+                        this._view.webview.postMessage({
+                            command: 'toolResults',
+                            results: response.toolResults
+                        });
+                    }
                 }
             }
 
             // Update chat interface
+            console.log('Updating chat interface...');
             this._updateChatInWebview();
         } catch (error) {
             console.error('Error handling user message:', error);
 
             // Stop loading state
-            this._view.webview.postMessage({ command: 'stopLoading' });
+            if (this._view && this._view.webview) {
+                this._view.webview.postMessage({ command: 'stopLoading' });
+            }
 
             // Add error message
             this.chatHistory.push({ role: 'assistant', content: `Error: ${error.message}` });
             this._updateChatInWebview();
+
+            // Show error message to user
+            vscode.window.showErrorMessage(`Error processing message: ${error.message}`);
         }
     }
 
     _updateChatInWebview() {
-        if (this._view) {
-            this._view.webview.postMessage({
-                command: 'updateChat',
-                history: this.chatHistory
-            });
+        try {
+            if (this._view && this._view.webview) {
+                console.log('Sending update chat history command to webview...');
+                this._view.webview.postMessage({
+                    command: 'updateChat',
+                    history: this.chatHistory
+                });
+            } else {
+                console.error('Cannot update chat interface: webview not available');
+            }
+        } catch (error) {
+            console.error('Error updating chat interface:', error);
         }
     }
 
@@ -265,7 +299,7 @@ class NyxnWebviewProvider {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}'; connect-src vscode-webview-resource:; img-src ${webview.cspSource} https:;">
             <link href="${styleUri}" rel="stylesheet">
             <title>Nyxn AI Assistant</title>
         </head>

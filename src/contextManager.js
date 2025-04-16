@@ -9,12 +9,12 @@ const readdir = util.promisify(fs.readdir);
 const stat = util.promisify(fs.stat);
 
 /**
- * 上下文管理器
- * 负责收集和管理代码上下文
+ * Context Manager
+ * Responsible for collecting and managing code context
  */
 class ContextManager {
     /**
-     * 初始化上下文管理器
+     * Initialize context manager
      * @param {vscode.ExtensionContext} context Extension context
      */
     constructor(context) {
@@ -25,8 +25,8 @@ class ContextManager {
     }
 
     /**
-     * 获取工作区根路径
-     * @returns {string|null} 工作区根路径
+     * Get workspace root path
+     * @returns {string|null} Workspace root path
      */
     getWorkspaceRoot() {
         const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -37,8 +37,8 @@ class ContextManager {
     }
 
     /**
-     * 获取当前文件上下文
-     * @returns {Promise<Object|null>} 当前文件上下文
+     * Get current file context
+     * @returns {Promise<Object|null>} Current file context
      */
     async getCurrentFileContext() {
         try {
@@ -51,7 +51,7 @@ class ContextManager {
             const selection = editor.selection;
             const workspaceRoot = this.getWorkspaceRoot();
 
-            // 基本文件信息
+            // Basic file information
             const fileContext = {
                 fileName: path.basename(document.fileName),
                 filePath: workspaceRoot
@@ -61,7 +61,7 @@ class ContextManager {
                 lineCount: document.lineCount
             };
 
-            // 选中的文本
+            // Selected text
             if (!selection.isEmpty) {
                 fileContext.selection = {
                     text: document.getText(selection),
@@ -72,10 +72,10 @@ class ContextManager {
                 };
             }
 
-            // 文件内容
+            // File content
             fileContext.content = document.getText();
 
-            // 获取文件符号
+            // Get file symbols
             try {
                 const symbols = await vscode.commands.executeCommand(
                     'vscode.executeDocumentSymbolProvider',
@@ -97,10 +97,10 @@ class ContextManager {
     }
 
     /**
-     * 获取项目结构上下文
-     * @param {number} [maxDepth=3] 最大深度
-     * @param {number} [maxFiles=100] 最大文件数
-     * @returns {Promise<Object|null>} 项目结构上下文
+     * Get project structure context
+     * @param {number} [maxDepth=3] Maximum depth
+     * @param {number} [maxFiles=100] Maximum number of files
+     * @returns {Promise<Object|null>} Project structure context
      */
     async getProjectStructureContext(maxDepth = 3, maxFiles = 100) {
         try {
@@ -109,7 +109,7 @@ class ContextManager {
                 return null;
             }
 
-            // 检查缓存是否有效
+            // Check if cache is valid
             const now = Date.now();
             if (
                 this.cachedContext &&
@@ -119,7 +119,7 @@ class ContextManager {
                 return this.cachedContext;
             }
 
-            // 递归获取目录结构
+            // Recursively get directory structure
             let fileCount = 0;
             const structure = await this._getDirectoryStructure(
                 workspaceRoot,
@@ -130,14 +130,14 @@ class ContextManager {
                 fileCount
             );
 
-            // 获取项目信息
+            // Get project information
             const projectContext = {
                 name: path.basename(workspaceRoot),
                 root: workspaceRoot,
                 structure
             };
 
-            // 尝试获取 package.json
+            // Try to get package.json
             try {
                 const packageJsonPath = path.join(workspaceRoot, 'package.json');
                 const packageJsonStat = await stat(packageJsonPath);
@@ -155,10 +155,10 @@ class ContextManager {
                     };
                 }
             } catch (error) {
-                // package.json 可能不存在，忽略错误
+                // package.json might not exist, ignore error
             }
 
-            // 缓存结果
+            // Cache result
             this.cachedContext = projectContext;
             this.lastUpdateTime = now;
 
@@ -170,10 +170,10 @@ class ContextManager {
     }
 
     /**
-     * 获取相关文件上下文
-     * @param {string} filePath 文件路径
-     * @param {number} [maxFiles=5] 最大文件数
-     * @returns {Promise<Array>} 相关文件上下文
+     * Get related files context
+     * @param {string} filePath File path
+     * @param {number} [maxFiles=5] Maximum number of files
+     * @returns {Promise<Array>} Related files context
      */
     async getRelatedFilesContext(filePath, maxFiles = 5) {
         try {
@@ -190,15 +190,15 @@ class ContextManager {
                 return [];
             }
 
-            // 获取文件扩展名和基本名称
+            // Get file extension and base name
             const ext = path.extname(filePath);
             const baseName = path.basename(filePath, ext);
             const dirName = path.dirname(filePath);
 
-            // 查找相关文件
+            // Find related files
             const relatedFiles = [];
 
-            // 1. 同目录下的同名不同扩展名文件
+            // 1. Files with same name but different extension in the same directory
             const dirEntries = await readdir(dirName);
             for (const entry of dirEntries) {
                 const entryPath = path.join(dirName, entry);
@@ -209,20 +209,20 @@ class ContextManager {
                 }
             }
 
-            // 2. 使用 VS Code API 查找引用该文件的文件
-            // 这需要打开文件并使用符号提供程序
+            // 2. Use VS Code API to find files that reference this file
+            // This requires opening the file and using the symbol provider
             try {
                 const uri = vscode.Uri.file(filePath);
                 const document = await vscode.workspace.openTextDocument(uri);
 
-                // 获取文档中的所有符号
+                // Get all symbols in the document
                 const symbols = await vscode.commands.executeCommand(
                     'vscode.executeDocumentSymbolProvider',
                     uri
                 );
 
                 if (symbols && symbols.length > 0) {
-                    // 对于每个符号，查找引用
+                    // For each symbol, find references
                     for (const symbol of symbols) {
                         if (relatedFiles.length >= maxFiles) {
                             break;
@@ -256,7 +256,7 @@ class ContextManager {
                 console.error('Error finding references:', error);
             }
 
-            // 读取相关文件内容
+            // Read related file content
             const relatedFilesContext = [];
             for (let i = 0; i < Math.min(relatedFiles.length, maxFiles); i++) {
                 const relatedFilePath = relatedFiles[i];
@@ -284,8 +284,8 @@ class ContextManager {
     }
 
     /**
-     * 获取完整上下文
-     * @returns {Promise<Object>} 完整上下文
+     * Get full context
+     * @returns {Promise<Object>} Full context
      */
     async getFullContext() {
         const currentFileContext = await this.getCurrentFileContext();
@@ -307,14 +307,14 @@ class ContextManager {
     }
 
     /**
-     * 递归获取目录结构
-     * @param {string} rootPath 根路径
-     * @param {string} dirPath 目录路径
-     * @param {number} depth 当前深度
-     * @param {number} maxDepth 最大深度
-     * @param {number} maxFiles 最大文件数
-     * @param {number} fileCount 当前文件计数
-     * @returns {Promise<Array>} 目录结构
+     * Recursively get directory structure
+     * @param {string} rootPath Root path
+     * @param {string} dirPath Directory path
+     * @param {number} depth Current depth
+     * @param {number} maxDepth Maximum depth
+     * @param {number} maxFiles Maximum number of files
+     * @param {number} fileCount Current file count
+     * @returns {Promise<Array>} Directory structure
      * @private
      */
     async _getDirectoryStructure(rootPath, dirPath, depth, maxDepth, maxFiles, fileCount) {
@@ -326,7 +326,7 @@ class ContextManager {
             const entries = await readdir(dirPath);
             const result = [];
 
-            // 排除隐藏文件和常见的忽略目录
+            // Exclude hidden files and common ignored directories
             const filteredEntries = entries.filter(entry =>
                 !entry.startsWith('.') &&
                 entry !== 'node_modules' &&
@@ -343,7 +343,7 @@ class ContextManager {
                 const entryStat = await stat(entryPath);
 
                 if (entryStat.isDirectory()) {
-                    // 递归处理子目录
+                    // Recursively process subdirectories
                     const children = await this._getDirectoryStructure(
                         rootPath,
                         entryPath,
@@ -360,7 +360,7 @@ class ContextManager {
                         children
                     });
                 } else if (entryStat.isFile()) {
-                    // 处理文件
+                    // Process file
                     fileCount++;
 
                     result.push({
@@ -381,9 +381,9 @@ class ContextManager {
     }
 
     /**
-     * 格式化符号
-     * @param {Array} symbols 符号列表
-     * @returns {Array} 格式化后的符号列表
+     * Format symbols
+     * @param {Array} symbols Symbol list
+     * @returns {Array} Formatted symbol list
      * @private
      */
     _formatSymbols(symbols) {

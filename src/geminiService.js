@@ -23,21 +23,31 @@ class GeminiService {
      * Initialize Gemini API
      */
     initialize() {
-        // Prioritize API key from configuration, fallback to environment variable
-        const config = vscode.workspace.getConfiguration('nyxn-ai-assistant');
-        const apiKey = config.get('apiKey') || process.env.GEMINI_API_KEY;
+        try {
+            // Prioritize API key from configuration, fallback to environment variable
+            const config = vscode.workspace.getConfiguration('nyxn-ai-assistant');
+            const apiKey = config.get('apiKey') || process.env.GEMINI_API_KEY;
 
-        if (!apiKey) {
-            vscode.window.showErrorMessage('Please set Gemini API key');
-            return;
+            if (!apiKey) {
+                vscode.window.showErrorMessage('Please set Gemini API key');
+                console.error('Gemini API key not set');
+                return;
+            }
+
+            console.log('Initializing Gemini API...');
+            this.genAI = new GoogleGenerativeAI(apiKey);
+
+            // Use correct model name - ensure using a valid model
+            this.modelName = config.get('model') || process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+            console.log(`Using model: ${this.modelName}`);
+
+            this.model = this.genAI.getGenerativeModel({ model: this.modelName });
+            this.systemPrompt = config.get('systemPrompt') || this.getDefaultSystemPrompt();
+            console.log('Gemini API initialized successfully');
+        } catch (error) {
+            console.error('Error initializing Gemini API:', error);
+            vscode.window.showErrorMessage(`Error initializing Gemini API: ${error.message}`);
         }
-
-        this.genAI = new GoogleGenerativeAI(apiKey);
-        this.modelName = config.get('model') || 'gemini-2.0-flash';
-        this.model = this.genAI.getGenerativeModel({ model: this.modelName });
-
-        // 设置系统提示
-        this.systemPrompt = config.get('systemPrompt') || this.getDefaultSystemPrompt();
     }
 
     /**
@@ -77,9 +87,12 @@ Please keep your answers concise, professional, and provide useful information a
      */
     async generateContent(prompt, context = null, useTools = true) {
         try {
+            console.log('Starting content generation...');
             if (!this.model) {
+                console.log('Model not initialized, attempting to initialize...');
                 this.initialize();
                 if (!this.model) {
+                    console.error('Initialization failed, API key not set or initialization failed');
                     return { error: 'API key not set or initialization failed' };
                 }
             }
@@ -116,15 +129,23 @@ ${prompt}`;
             const history = this._buildChatHistory();
 
             // Create chat session
+            console.log('Creating chat session...');
             const chat = this.model.startChat({
                 history: history,
                 systemInstruction: systemContext,
             });
 
             // Send message
+            console.log('Sending message to Gemini API...');
             const result = await chat.sendMessage(fullPrompt);
             const response = result.response;
             const responseText = response.text();
+            console.log('Successfully received Gemini API response');
+
+            // Log the first 100 characters of the response (for debugging)
+            if (responseText) {
+                console.log(`Response preview: ${responseText.substring(0, 100)}...`);
+            }
 
             // Add to chat history
             this.chatHistory.push({ role: 'user', parts: [{ text: fullPrompt }] });
@@ -153,6 +174,8 @@ ${prompt}`;
             };
         } catch (error) {
             console.error('Gemini API error:', error);
+            // Display more detailed error information
+            vscode.window.showErrorMessage(`Gemini API error: ${error.message}`);
             return { error: `Error calling Gemini API: ${error.message}` };
         }
     }

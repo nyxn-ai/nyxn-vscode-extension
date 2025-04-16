@@ -1,9 +1,9 @@
 // @ts-nocheck
 (function () {
-    // 获取VS Code API
+    // Get VS Code API
     const vscode = acquireVsCodeApi();
 
-    // 获取DOM元素
+    // Get DOM elements
     const chatContainer = document.getElementById('chat-container');
     const userInput = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
@@ -13,25 +13,40 @@
     const toolContent = document.getElementById('tool-content');
     const closeToolResults = document.getElementById('close-tool-results');
 
-    // 初始化
+    // Initialize
     let isLoading = false;
 
-    // Send消息
+    // Send message
     function sendMessage() {
         const text = userInput.value.trim();
         if (text && !isLoading) {
-            vscode.postMessage({
-                command: 'sendMessage',
-                text: text
-            });
-            userInput.value = '';
+            try {
+                console.log('Sending message to extension...');
+                vscode.postMessage({
+                    command: 'sendMessage',
+                    text: text
+                });
+                userInput.value = '';
+                // Show visual feedback for successful send
+                sendButton.textContent = 'Sent';
+                setTimeout(() => {
+                    sendButton.textContent = 'Send';
+                }, 1000);
+            } catch (error) {
+                console.error('Error sending message:', error);
+                showError(`Error sending message: ${error.message}`);
+            }
+        } else if (isLoading) {
+            showError('Loading in progress, please try again later');
+        } else {
+            showError('Please enter a message');
         }
     }
 
-    // 监听Send按钮点击
+    // Listen for Send button click
     sendButton.addEventListener('click', sendMessage);
 
-    // 监听Enter键
+    // Listen for Enter key
     userInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -41,7 +56,7 @@
 
     // Clear History
     clearButton.addEventListener('click', () => {
-        if (confirm('Are you sure you want to clear all chat history？')) {
+        if (confirm('Are you sure you want to clear all chat history?')) {
             vscode.postMessage({
                 command: 'clearHistory'
             });
@@ -54,23 +69,23 @@
             command: 'getFullContext'
         });
 
-        // 显示加载状态
+        // Show loading state
         contextButton.disabled = true;
         contextButton.textContent = 'Loading...';
 
-        // 5秒后恢复按钮状态
+        // Restore button state after 5 seconds
         setTimeout(() => {
             contextButton.disabled = false;
             contextButton.textContent = 'Get Context';
         }, 5000);
     });
 
-    // CloseToolResult
+    // Close tool results
     closeToolResults.addEventListener('click', () => {
         toolResults.classList.add('hidden');
     });
 
-    // 处理Tool调用
+    // Handle tool call
     function handleToolCall(toolCallElement) {
         const toolCallButtons = toolCallElement.querySelectorAll('.tool-call-button');
 
@@ -86,11 +101,11 @@
                     console.error('Error parsing tool parameters:', error);
                 }
 
-                // 禁用按钮并显示加载状态
+                // Disable button and show loading state
                 button.disabled = true;
                 button.textContent = 'Executing...';
 
-                // SendToolExecute请求
+                // Send tool execute request
                 vscode.postMessage({
                     command: 'executeTool',
                     toolName,
@@ -100,12 +115,12 @@
         });
     }
 
-    // 处理Markdown
+    // Process markdown
     function processMarkdown(text) {
-        // 处理Tool调用
+        // Process tool calls
         const toolCallRegex = /<tool>\s*<name>(.*?)<\/name>\s*<parameters>([\s\S]*?)<\/parameters>\s*<\/tool>/g;
         let processedText = text.replace(toolCallRegex, (match, toolName, parametersContent) => {
-            // 解析Param
+            // Parse parameters
             const paramRegex = /<param\s+name="([^"]+)">([\s\S]*?)<\/param>/g;
             let paramMatch;
             const params = {};
@@ -118,7 +133,7 @@
                 paramHtml += `<div class="tool-param"><span class="param-name">${escapeHtml(paramName)}</span>: <span class="param-value">${escapeHtml(paramValue)}</span></div>`;
             }
 
-            // 将Param序列化为JSON字符串
+            // Serialize parameters to JSON string
             const paramsJson = JSON.stringify(params);
 
             return `<div class="tool-call">
@@ -132,7 +147,7 @@
             </div>`;
         });
 
-        // 处理ToolResult
+        // Process tool results
         const toolResultRegex = /<tool-result\s+name="([^"]+)">\s*([\s\S]*?)\s*<\/tool-result>/g;
         processedText = processedText.replace(toolResultRegex, (match, toolName, resultContent) => {
             return `<div class="tool-result">
@@ -145,7 +160,7 @@
             </div>`;
         });
 
-        // 处理ToolError
+        // Process tool errors
         const toolErrorRegex = /<tool-error\s+name="([^"]+)">\s*([\s\S]*?)\s*<\/tool-error>/g;
         processedText = processedText.replace(toolErrorRegex, (match, toolName, errorContent) => {
             return `<div class="tool-error">
@@ -158,7 +173,7 @@
             </div>`;
         });
 
-        // 转换Markdown代码块为HTML
+        // Convert markdown code blocks to HTML
         const codeBlockRegex = /```([\w-]*)\n([\s\S]*?)```/g;
         processedText = processedText.replace(codeBlockRegex, (match, language, code) => {
             return `<div class="code-block">
@@ -171,13 +186,13 @@
             </div>`;
         });
 
-        // 处理普通文本段落
+        // Process regular text paragraphs
         processedText = processedText.replace(/(?:\r\n|\r|\n)/g, '<br>');
 
         return processedText;
     }
 
-    // HTML转义
+    // HTML escape
     function escapeHtml(unsafe) {
         return unsafe
             .replace(/&/g, "&amp;")
@@ -187,7 +202,7 @@
             .replace(/'/g, "&#039;");
     }
 
-    // 更新聊天界面
+    // Update chat interface
     function updateChat(history) {
         chatContainer.innerHTML = '';
 
@@ -201,9 +216,9 @@
             if (message.role === 'assistant') {
                 contentDiv.innerHTML = processMarkdown(message.content);
 
-                // 添加代码块事件监听器
+                // Add code block event listeners
                 setTimeout(() => {
-                    // 代码块按钮
+                    // Code block buttons
                     const copyButtons = messageDiv.querySelectorAll('.copy-button');
                     const insertButtons = messageDiv.querySelectorAll('.insert-button');
 
@@ -230,7 +245,7 @@
                         });
                     });
 
-                    // Tool调用按钮
+                    // Tool call buttons
                     handleToolCall(messageDiv);
                 }, 0);
             } else {
@@ -241,11 +256,11 @@
             chatContainer.appendChild(messageDiv);
         });
 
-        // 滚动到底部
+        // Scroll to bottom
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    // 显示ToolResult
+    // Show tool results
     function showToolResults(results) {
         toolContent.innerHTML = '';
 
@@ -253,13 +268,13 @@
             const resultDiv = document.createElement('div');
             resultDiv.className = 'tool-execution-result';
 
-            // Tool名称和Param
+            // Tool name and parameters
             const headerDiv = document.createElement('div');
             headerDiv.className = 'tool-execution-header';
             headerDiv.innerHTML = `<strong>Tool:</strong> ${escapeHtml(result.name)}`;
             resultDiv.appendChild(headerDiv);
 
-            // Param
+            // Parameters
             if (result.parameters) {
                 const paramsDiv = document.createElement('div');
                 paramsDiv.className = 'tool-execution-params';
@@ -276,7 +291,7 @@
                 resultDiv.appendChild(paramsDiv);
             }
 
-            // Result或Error
+            // Result or Error
             const contentDiv = document.createElement('div');
             contentDiv.className = result.error ? 'tool-execution-error' : 'tool-execution-content';
 
@@ -290,11 +305,11 @@
             toolContent.appendChild(resultDiv);
         });
 
-        // 显示ToolResult面板
+        // Show tool results panel
         toolResults.classList.remove('hidden');
     }
 
-    // 显示加载状态
+    // Show loading state
     function showLoading() {
         isLoading = true;
         sendButton.disabled = true;
@@ -307,7 +322,7 @@
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    // 隐藏加载状态
+    // Hide loading state
     function hideLoading() {
         isLoading = false;
         sendButton.disabled = false;
@@ -319,7 +334,7 @@
         }
     }
 
-    // 显示Error消息
+    // Show error message
     function showError(message) {
         const errorDiv = document.createElement('div');
         errorDiv.className = 'error-message';
@@ -327,55 +342,76 @@
 
         chatContainer.appendChild(errorDiv);
 
-        // 3秒后自动移除
+        // Auto remove after 3 seconds
         setTimeout(() => {
             chatContainer.removeChild(errorDiv);
         }, 3000);
     }
 
-    // 监听来自扩展的消息
+    // Listen for messages from extension
     window.addEventListener('message', event => {
-        const message = event.data;
+        try {
+            const message = event.data;
+            console.log(`Received message from extension: ${message.command}`);
 
-        switch (message.command) {
-            case 'updateChat':
-                updateChat(message.history);
-                break;
+            switch (message.command) {
+                case 'updateChat':
+                    if (message.history) {
+                        console.log(`Updating chat history, message count: ${message.history.length}`);
+                        updateChat(message.history);
+                    } else {
+                        console.error('Failed to update chat history: no history data');
+                    }
+                    break;
 
-            case 'startLoading':
-                showLoading();
-                break;
+                case 'startLoading':
+                    console.log('Showing loading state');
+                    showLoading();
+                    break;
 
-            case 'stopLoading':
-                hideLoading();
-                break;
+                case 'stopLoading':
+                    console.log('Hiding loading state');
+                    hideLoading();
+                    break;
 
-            case 'toolResults':
-                showToolResults(message.results);
-                break;
+                case 'toolResults':
+                    if (message.results) {
+                        console.log(`Showing tool results, count: ${message.results.length}`);
+                        showToolResults(message.results);
+                    }
+                    break;
 
-            case 'toolResult':
-                // 单个ToolExecuteResult
-                showToolResults([{
-                    name: message.toolName,
-                    parameters: message.parameters,
-                    result: message.result
-                }]);
-                break;
+                case 'toolResult':
+                    // Single tool execution result
+                    console.log(`Showing single tool result: ${message.toolName}`);
+                    showToolResults([{
+                        name: message.toolName,
+                        parameters: message.parameters,
+                        result: message.result
+                    }]);
+                    break;
 
-            case 'error':
-                showError(message.message);
-                break;
+                case 'error':
+                    console.error(`Received error message: ${message.message}`);
+                    showError(message.message);
+                    break;
 
-            case 'fullContext':
-                // 显示上下文信息
-                console.log('Full context:', message.context);
-                // 可以在这里添加显示上下文的UI
-                break;
+                case 'fullContext':
+                    // Show context information
+                    console.log('Received full context information');
+                    // Can add UI for displaying context here
+                    break;
+
+                default:
+                    console.log(`Received unknown command: ${message.command}`);
+            }
+        } catch (error) {
+            console.error('Error processing message:', error);
+            showError(`Error processing message: ${error.message}`);
         }
     });
 
-    // 请求代码上下文
+    // Request code context
     vscode.postMessage({
         command: 'getCodeContext'
     });

@@ -1,8 +1,6 @@
-const vscode = require('vscode');
-
 /**
- * 工具管理器 - 管理和执行各种工具
- * 类似Claude Agent的工具框架
+ * Tool Manager - Manages and executes various tools
+ * Similar to Claude Agent's tool framework
  */
 class ToolManager {
     constructor() {
@@ -11,45 +9,45 @@ class ToolManager {
     }
 
     /**
-     * 注册工具
-     * @param {string} toolName 工具名称
-     * @param {Function} toolFunction 工具函数
-     * @param {Object} toolMetadata 工具元数据
+     * Register tool
+     * @param {string} toolName Tool name
+     * @param {Function} toolFunction Tool function
+     * @param {Object} toolMetadata Tool metadata
      */
     registerTool(toolName, toolFunction, toolMetadata = {}) {
         this.tools.set(toolName, {
-            execute: toolFunction,
+            function: toolFunction,
             metadata: {
+                name: toolName,
                 description: toolMetadata.description || '',
                 parameters: toolMetadata.parameters || {},
-                required: toolMetadata.required || [],
-                ...toolMetadata
+                required: toolMetadata.required || []
             }
         });
     }
 
     /**
-     * 获取所有可用工具的描述
-     * @returns {Array} 工具描述列表
+     * Get descriptions of all available tools
+     * @returns {Array} List of tool descriptions
      */
     getAvailableTools() {
-        const toolDescriptions = [];
-        this.tools.forEach((tool, name) => {
-            toolDescriptions.push({
+        const tools = [];
+        for (const [name, tool] of this.tools.entries()) {
+            tools.push({
                 name,
                 description: tool.metadata.description,
                 parameters: tool.metadata.parameters,
                 required: tool.metadata.required
             });
-        });
-        return toolDescriptions;
+        }
+        return tools;
     }
 
     /**
-     * 执行工具
-     * @param {string} toolName 工具名称
-     * @param {Object} parameters 参数
-     * @returns {Promise<any>} 工具执行结果
+     * Execute tool
+     * @param {string} toolName Tool name
+     * @param {Object} parameters Parameters
+     * @returns {Promise<any>} Tool execution result
      */
     async executeTool(toolName, parameters = {}) {
         if (!this.tools.has(toolName)) {
@@ -57,25 +55,24 @@ class ToolManager {
         }
 
         const tool = this.tools.get(toolName);
-        
-        // 验证必需参数
-        for (const requiredParam of tool.metadata.required) {
-            if (!(requiredParam in parameters)) {
-                throw new Error(`Missing required parameter '${requiredParam}' for tool '${toolName}'`);
-            }
-        }
 
         try {
-            // 执行工具
-            const result = await tool.execute(parameters);
-            
-            // 存储结果以供后续使用
+            // Validate required parameters
+            const missingParams = tool.metadata.required.filter(param => !parameters.hasOwnProperty(param));
+            if (missingParams.length > 0) {
+                throw new Error(`Missing required parameters: ${missingParams.join(', ')}`);
+            }
+
+            // Execute tool
+            const result = await tool.function(parameters);
+
+            // Store result for later use
             this.toolResults.set(toolName, {
                 parameters,
                 result,
-                timestamp: new Date().toISOString()
+                timestamp: new Date()
             });
-            
+
             return result;
         } catch (error) {
             console.error(`Error executing tool '${toolName}':`, error);
@@ -84,40 +81,40 @@ class ToolManager {
     }
 
     /**
-     * 解析工具调用
-     * 从AI响应中提取工具调用
-     * @param {string} text AI响应文本
-     * @returns {Array} 工具调用列表
+     * Parse tool calls
+     * Extract tool calls from AI response
+     * @param {string} text AI response text
+     * @returns {Array} List of tool calls
      */
     parseToolCalls(text) {
-        // 匹配 <tool>...</tool> 格式的工具调用
+        // Match tool calls in <tool>...</tool> format
         const toolCallRegex = /<tool[^>]*>([\s\S]*?)<\/tool>/g;
         const toolCalls = [];
-        
+
         let match;
         while ((match = toolCallRegex.exec(text)) !== null) {
             try {
                 const toolCallContent = match[1].trim();
-                
-                // 解析工具名称和参数
+
+                // Parse tool name and parameters
                 const nameMatch = /<name>(.*?)<\/name>/s.exec(toolCallContent);
                 const paramsMatch = /<parameters>([\s\S]*?)<\/parameters>/s.exec(toolCallContent);
-                
+
                 if (nameMatch && paramsMatch) {
                     const toolName = nameMatch[1].trim();
                     const paramsContent = paramsMatch[1].trim();
-                    
-                    // 解析参数
+
+                    // Parse parameters
                     const params = {};
                     const paramRegex = /<param\s+name="([^"]+)">([\s\S]*?)<\/param>/g;
                     let paramMatch;
-                    
+
                     while ((paramMatch = paramRegex.exec(paramsContent)) !== null) {
                         const paramName = paramMatch[1];
                         const paramValue = paramMatch[2].trim();
                         params[paramName] = paramValue;
                     }
-                    
+
                     toolCalls.push({
                         name: toolName,
                         parameters: params,
@@ -128,20 +125,20 @@ class ToolManager {
                 console.error('Error parsing tool call:', error);
             }
         }
-        
+
         return toolCalls;
     }
 
     /**
-     * 执行从AI响应中解析出的工具调用
-     * @param {string} text AI响应文本
-     * @returns {Promise<{text: string, results: Array}>} 处理后的文本和工具执行结果
+     * Execute tool calls parsed from AI response
+     * @param {string} text AI response text
+     * @returns {Promise<{text: string, results: Array}>} Processed text and tool execution results
      */
     async executeToolCalls(text) {
         const toolCalls = this.parseToolCalls(text);
         const results = [];
         let processedText = text;
-        
+
         for (const toolCall of toolCalls) {
             try {
                 const result = await this.executeTool(toolCall.name, toolCall.parameters);
@@ -150,27 +147,27 @@ class ToolManager {
                     parameters: toolCall.parameters,
                     result
                 });
-                
-                // 替换原始工具调用文本为结果
-                const resultText = typeof result === 'object' 
-                    ? JSON.stringify(result, null, 2) 
+
+                // Replace original tool call text with result
+                const resultText = typeof result === 'object'
+                    ? JSON.stringify(result, null, 2)
                     : String(result);
-                
+
                 const replacementText = `<tool-result name="${toolCall.name}">
 ${resultText}
 </tool-result>`;
-                
+
                 processedText = processedText.replace(toolCall.originalText, replacementText);
             } catch (error) {
                 console.error(`Error executing tool '${toolCall.name}':`, error);
-                
-                // 替换为错误信息
+
+                // Replace with error message
                 const errorText = `<tool-error name="${toolCall.name}">
 Error: ${error.message}
 </tool-error>`;
-                
+
                 processedText = processedText.replace(toolCall.originalText, errorText);
-                
+
                 results.push({
                     name: toolCall.name,
                     parameters: toolCall.parameters,
@@ -178,7 +175,7 @@ Error: ${error.message}
                 });
             }
         }
-        
+
         return {
             text: processedText,
             results

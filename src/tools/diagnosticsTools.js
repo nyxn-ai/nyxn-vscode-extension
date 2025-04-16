@@ -2,21 +2,21 @@ const vscode = require('vscode');
 const path = require('path');
 
 /**
- * 诊断工具集
- * 提供代码问题诊断、建议等功能
+ * Diagnostics tools
+ * Provides code diagnostics, suggestions, and other functionality
  */
 class DiagnosticsTools {
     /**
-     * 初始化诊断工具
-     * @param {vscode.ExtensionContext} context 扩展上下文
+     * Initialize diagnostics tools
+     * @param {vscode.ExtensionContext} context Extension context
      */
     constructor(context) {
         this.context = context;
     }
 
     /**
-     * 获取工作区根路径
-     * @returns {string|null} 工作区根路径
+     * Get workspace root path
+     * @returns {string|null} Workspace root path
      */
     getWorkspaceRoot() {
         const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -27,28 +27,28 @@ class DiagnosticsTools {
     }
 
     /**
-     * 获取诊断信息
-     * @param {Object} params 参数对象
-     * @param {string} [params.file_path] 文件路径
-     * @returns {Promise<Array>} 诊断信息列表
+     * Get diagnostics
+     * @param {Object} params Parameters object
+     * @param {string} [params.file_path] File path
+     * @returns {Promise<Array>} List of diagnostics
      */
     async getDiagnostics(params) {
         try {
             const { file_path } = params;
             const workspaceRoot = this.getWorkspaceRoot();
-            
-            // 获取所有诊断信息
+
+            // Get all diagnostics
             const allDiagnostics = [];
-            
+
             if (file_path) {
-                // 获取特定文件的诊断信息
+                // Get diagnostics for specific file
                 const fullPath = path.isAbsolute(file_path)
                     ? file_path
                     : path.join(workspaceRoot || '', file_path);
-                
+
                 const uri = vscode.Uri.file(fullPath);
                 const fileDiagnostics = vscode.languages.getDiagnostics(uri);
-                
+
                 fileDiagnostics.forEach(diagnostic => {
                     allDiagnostics.push({
                         file: file_path,
@@ -61,13 +61,13 @@ class DiagnosticsTools {
                     });
                 });
             } else {
-                // 获取所有文件的诊断信息
+                // Get diagnostics for all files
                 vscode.languages.getDiagnostics().forEach(([uri, diagnostics]) => {
                     const filePath = uri.fsPath;
-                    const relativePath = workspaceRoot 
+                    const relativePath = workspaceRoot
                         ? path.relative(workspaceRoot, filePath)
                         : filePath;
-                    
+
                     diagnostics.forEach(diagnostic => {
                         allDiagnostics.push({
                             file: relativePath,
@@ -81,7 +81,7 @@ class DiagnosticsTools {
                     });
                 });
             }
-            
+
             return allDiagnostics;
         } catch (error) {
             throw new Error(`Failed to get diagnostics: ${error.message}`);
@@ -89,62 +89,62 @@ class DiagnosticsTools {
     }
 
     /**
-     * 获取代码操作
-     * @param {Object} params 参数对象
-     * @param {string} params.file_path 文件路径
-     * @param {number} [params.line] 行号
-     * @param {number} [params.column] 列号
-     * @returns {Promise<Array>} 代码操作列表
+     * Get code actions
+     * @param {Object} params Parameters object
+     * @param {string} params.file_path File path
+     * @param {number} [params.line] Line number
+     * @param {number} [params.column] Column number
+     * @returns {Promise<Array>} List of code actions
      */
     async getCodeActions(params) {
         try {
             const { file_path, line, column } = params;
-            
+
             if (!file_path) {
                 throw new Error('File path is required');
             }
-            
-            // 解析文件路径
+
+            // Resolve file path
             const workspaceRoot = this.getWorkspaceRoot();
             const fullPath = path.isAbsolute(file_path)
                 ? file_path
                 : path.join(workspaceRoot || '', file_path);
-            
-            // 打开文档
+
+            // Open document
             const uri = vscode.Uri.file(fullPath);
             const document = await vscode.workspace.openTextDocument(uri);
-            
-            // 创建范围
+
+            // Create range
             let range;
             if (typeof line === 'number' && typeof column === 'number') {
                 const position = new vscode.Position(line - 1, column - 1);
                 range = new vscode.Range(position, position);
             } else {
-                // 使用整个文档范围
+                // Use entire document range
                 range = new vscode.Range(
                     new vscode.Position(0, 0),
                     new vscode.Position(document.lineCount - 1, document.lineAt(document.lineCount - 1).text.length)
                 );
             }
-            
-            // 获取诊断信息
+
+            // Get diagnostics
             const diagnostics = vscode.languages.getDiagnostics(uri).filter(
                 diagnostic => diagnostic.range.intersection(range)
             );
-            
-            // 获取代码操作
+
+            // Get code actions
             const codeActions = await vscode.commands.executeCommand(
                 'vscode.executeCodeActionProvider',
                 uri,
                 range,
                 vscode.CodeActionKind.QuickFix.value
             );
-            
+
             if (!codeActions || codeActions.length === 0) {
                 return [];
             }
-            
-            // 格式化结果
+
+            // Format results
             return codeActions.map(action => ({
                 title: action.title,
                 kind: action.kind ? action.kind.value : null,
@@ -162,65 +162,65 @@ class DiagnosticsTools {
     }
 
     /**
-     * 应用代码操作
-     * @param {Object} params 参数对象
-     * @param {string} params.file_path 文件路径
-     * @param {number} params.line 行号
-     * @param {number} params.column 列号
-     * @param {string} params.action_title 操作标题
-     * @returns {Promise<string>} 成功消息
+     * Apply code action
+     * @param {Object} params Parameters object
+     * @param {string} params.file_path File path
+     * @param {number} params.line Line number
+     * @param {number} params.column Column number
+     * @param {string} params.action_title Action title
+     * @returns {Promise<string>} Success message
      */
     async applyCodeAction(params) {
         try {
             const { file_path, line, column, action_title } = params;
-            
+
             if (!file_path || !line || !column || !action_title) {
                 throw new Error('File path, line, column, and action title are required');
             }
-            
-            // 解析文件路径
+
+            // Resolve file path
             const workspaceRoot = this.getWorkspaceRoot();
             const fullPath = path.isAbsolute(file_path)
                 ? file_path
                 : path.join(workspaceRoot || '', file_path);
-            
-            // 打开文档
+
+            // Open document
             const uri = vscode.Uri.file(fullPath);
             const document = await vscode.workspace.openTextDocument(uri);
-            
-            // 创建位置
+
+            // Create position
             const position = new vscode.Position(line - 1, column - 1);
             const range = new vscode.Range(position, position);
-            
-            // 获取代码操作
+
+            // Get code actions
             const codeActions = await vscode.commands.executeCommand(
                 'vscode.executeCodeActionProvider',
                 uri,
                 range
             );
-            
+
             if (!codeActions || codeActions.length === 0) {
                 throw new Error('No code actions available');
             }
-            
-            // 查找匹配的操作
+
+            // Find matching action
             const action = codeActions.find(a => a.title === action_title);
             if (!action) {
                 throw new Error(`Code action "${action_title}" not found`);
             }
-            
-            // 应用代码操作
+
+            // Apply code action
             if (action.edit) {
                 await vscode.workspace.applyEdit(action.edit);
             }
-            
+
             if (action.command) {
                 await vscode.commands.executeCommand(
                     action.command.command,
                     ...(action.command.arguments || [])
                 );
             }
-            
+
             return `Applied code action: ${action_title}`;
         } catch (error) {
             throw new Error(`Failed to apply code action: ${error.message}`);
@@ -228,9 +228,9 @@ class DiagnosticsTools {
     }
 
     /**
-     * 将诊断严重性转换为字符串
-     * @param {vscode.DiagnosticSeverity} severity 严重性
-     * @returns {string} 严重性字符串
+     * Convert diagnostic severity to string
+     * @param {vscode.DiagnosticSeverity} severity Severity
+     * @returns {string} Severity string
      * @private
      */
     _getSeverityString(severity) {
@@ -249,61 +249,61 @@ class DiagnosticsTools {
     }
 
     /**
-     * 注册所有诊断工具
-     * @param {ToolManager} toolManager 工具管理器
+     * Register all diagnostic tools
+     * @param {ToolManager} toolManager Tool manager
      */
     registerTools(toolManager) {
-        // 获取诊断信息
+        // Get diagnostics
         toolManager.registerTool('get-diagnostics', this.getDiagnostics.bind(this), {
-            description: '获取代码诊断信息',
+            description: 'Get code diagnostics',
             parameters: {
                 file_path: {
                     type: 'string',
-                    description: '文件路径，可以是相对于工作区根目录的路径'
+                    description: 'File path, can be relative to workspace root'
                 }
             },
             required: []
         });
-        
-        // 获取代码操作
+
+        // Get code actions
         toolManager.registerTool('get-code-actions', this.getCodeActions.bind(this), {
-            description: '获取代码操作',
+            description: 'Get code actions',
             parameters: {
                 file_path: {
                     type: 'string',
-                    description: '文件路径，可以是相对于工作区根目录的路径'
+                    description: 'File path, can be relative to workspace root'
                 },
                 line: {
                     type: 'number',
-                    description: '行号'
+                    description: 'Line number'
                 },
                 column: {
                     type: 'number',
-                    description: '列号'
+                    description: 'Column number'
                 }
             },
             required: ['file_path']
         });
-        
-        // 应用代码操作
+
+        // Apply code action
         toolManager.registerTool('apply-code-action', this.applyCodeAction.bind(this), {
-            description: '应用代码操作',
+            description: 'Apply code action',
             parameters: {
                 file_path: {
                     type: 'string',
-                    description: '文件路径，可以是相对于工作区根目录的路径'
+                    description: 'File path, can be relative to workspace root'
                 },
                 line: {
                     type: 'number',
-                    description: '行号'
+                    description: 'Line number'
                 },
                 column: {
                     type: 'number',
-                    description: '列号'
+                    description: 'Column number'
                 },
                 action_title: {
                     type: 'string',
-                    description: '操作标题'
+                    description: 'Action title'
                 }
             },
             required: ['file_path', 'line', 'column', 'action_title']

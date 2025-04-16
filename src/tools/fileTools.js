@@ -3,28 +3,28 @@ const fs = require('fs');
 const path = require('path');
 const util = require('util');
 
-// 将 fs 函数转换为 Promise
+// Convert fs functions to Promises
 const readFile = util.promisify(fs.readFile);
 const writeFile = util.promisify(fs.writeFile);
 const readdir = util.promisify(fs.readdir);
 const stat = util.promisify(fs.stat);
 
 /**
- * 文件操作工具集
- * 提供读取、写入、搜索文件等功能
+ * File operation tools
+ * Provides functions for reading, writing, searching files, etc.
  */
 class FileTools {
     /**
-     * 初始化文件工具
-     * @param {vscode.ExtensionContext} context 扩展上下文
+     * Initialize file tools
+     * @param {vscode.ExtensionContext} context Extension context
      */
     constructor(context) {
         this.context = context;
     }
 
     /**
-     * 获取工作区根路径
-     * @returns {string|null} 工作区根路径
+     * Get workspace root path
+     * @returns {string|null} Workspace root path
      */
     getWorkspaceRoot() {
         const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -35,12 +35,12 @@ class FileTools {
     }
 
     /**
-     * 解析文件路径
-     * @param {string} filePath 文件路径
-     * @returns {string} 完整文件路径
+     * Resolve file path
+     * @param {string} filePath File path
+     * @returns {string} Full file path
      */
     resolvePath(filePath) {
-        // 如果是相对路径，则相对于工作区根目录
+        // If it's a relative path, resolve it relative to workspace root
         if (!path.isAbsolute(filePath)) {
             const workspaceRoot = this.getWorkspaceRoot();
             if (workspaceRoot) {
@@ -51,20 +51,20 @@ class FileTools {
     }
 
     /**
-     * 读取文件内容
-     * @param {Object} params 参数对象
-     * @param {string} params.file_path 文件路径
-     * @returns {Promise<string>} 文件内容
+     * Read file content
+     * @param {Object} params Parameters object
+     * @param {string} params.file_path File path
+     * @returns {Promise<string>} File content
      */
     async readFile(params) {
         try {
             const { file_path } = params;
             const fullPath = this.resolvePath(file_path);
-            
-            // 检查文件是否存在
+
+            // Check if file exists
             await stat(fullPath);
-            
-            // 读取文件内容
+
+            // Read file content
             const content = await readFile(fullPath, 'utf8');
             return content;
         } catch (error) {
@@ -73,18 +73,18 @@ class FileTools {
     }
 
     /**
-     * 写入文件内容
-     * @param {Object} params 参数对象
-     * @param {string} params.file_path 文件路径
-     * @param {string} params.content 文件内容
-     * @returns {Promise<string>} 成功消息
+     * Write file content
+     * @param {Object} params Parameters object
+     * @param {string} params.file_path File path
+     * @param {string} params.content File content
+     * @returns {Promise<string>} Success message
      */
     async writeFile(params) {
         try {
             const { file_path, content } = params;
             const fullPath = this.resolvePath(file_path);
-            
-            // 写入文件内容
+
+            // Write file content
             await writeFile(fullPath, content, 'utf8');
             return `File successfully written: ${file_path}`;
         } catch (error) {
@@ -93,26 +93,26 @@ class FileTools {
     }
 
     /**
-     * 列出目录内容
-     * @param {Object} params 参数对象
-     * @param {string} params.directory_path 目录路径
-     * @returns {Promise<Array>} 目录内容列表
+     * List directory contents
+     * @param {Object} params Parameters object
+     * @param {string} params.directory_path Directory path
+     * @returns {Promise<Array>} Directory contents list
      */
     async listDirectory(params) {
         try {
             const { directory_path } = params;
             const fullPath = this.resolvePath(directory_path);
-            
-            // 检查目录是否存在
+
+            // Check if directory exists
             const stats = await stat(fullPath);
             if (!stats.isDirectory()) {
                 throw new Error(`Not a directory: ${directory_path}`);
             }
-            
-            // 读取目录内容
+
+            // Read directory contents
             const items = await readdir(fullPath);
-            
-            // 获取每个项目的详细信息
+
+            // Get detailed information for each item
             const detailedItems = await Promise.all(
                 items.map(async (item) => {
                     const itemPath = path.join(fullPath, item);
@@ -126,7 +126,7 @@ class FileTools {
                     };
                 })
             );
-            
+
             return detailedItems;
         } catch (error) {
             throw new Error(`Failed to list directory: ${error.message}`);
@@ -134,36 +134,36 @@ class FileTools {
     }
 
     /**
-     * 搜索文件
-     * @param {Object} params 参数对象
-     * @param {string} params.pattern 搜索模式
-     * @param {string} [params.directory_path] 目录路径
-     * @param {boolean} [params.include_hidden=false] 是否包含隐藏文件
-     * @returns {Promise<Array>} 匹配的文件列表
+     * Search files
+     * @param {Object} params Parameters object
+     * @param {string} params.pattern Search pattern
+     * @param {string} [params.directory_path] Directory path
+     * @param {boolean} [params.include_hidden=false] Whether to include hidden files
+     * @returns {Promise<Array>} List of matching files
      */
     async searchFiles(params) {
         try {
             const { pattern, directory_path, include_hidden = false } = params;
-            const rootPath = directory_path 
+            const rootPath = directory_path
                 ? this.resolvePath(directory_path)
                 : this.getWorkspaceRoot();
-            
+
             if (!rootPath) {
                 throw new Error('No workspace folder is open');
             }
-            
-            // 使用 VS Code API 搜索文件
+
+            // Use VS Code API to search files
             const files = await vscode.workspace.findFiles(
                 pattern,
                 include_hidden ? undefined : '**/node_modules/**,**/.git/**'
             );
-            
-            // 过滤结果，只包含指定目录下的文件
-            const filteredFiles = files.filter(file => 
+
+            // Filter results to only include files in the specified directory
+            const filteredFiles = files.filter(file =>
                 file.fsPath.startsWith(rootPath)
             );
-            
-            // 格式化结果
+
+            // Format results
             return filteredFiles.map(file => ({
                 name: path.basename(file.fsPath),
                 path: path.relative(this.getWorkspaceRoot() || rootPath, file.fsPath),
@@ -175,8 +175,8 @@ class FileTools {
     }
 
     /**
-     * 获取当前打开的文件
-     * @returns {Promise<Object>} 当前文件信息
+     * Get current open file
+     * @returns {Promise<Object>} Current file information
      */
     async getCurrentFile() {
         try {
@@ -184,18 +184,18 @@ class FileTools {
             if (!editor) {
                 throw new Error('No active editor');
             }
-            
+
             const document = editor.document;
             const workspaceRoot = this.getWorkspaceRoot();
-            
+
             return {
                 name: path.basename(document.fileName),
-                path: workspaceRoot 
+                path: workspaceRoot
                     ? path.relative(workspaceRoot, document.fileName)
                     : document.fileName,
                 language: document.languageId,
                 content: document.getText(),
-                selection: editor.selection 
+                selection: editor.selection
                     ? document.getText(editor.selection)
                     : null
             };
@@ -205,73 +205,73 @@ class FileTools {
     }
 
     /**
-     * 注册所有文件工具
-     * @param {ToolManager} toolManager 工具管理器
+     * Register all file tools
+     * @param {ToolManager} toolManager Tool manager
      */
     registerTools(toolManager) {
-        // 读取文件
+        // Read file
         toolManager.registerTool('read-file', this.readFile.bind(this), {
-            description: '读取文件内容',
+            description: 'Read file content',
             parameters: {
                 file_path: {
                     type: 'string',
-                    description: '文件路径，可以是相对于工作区根目录的路径'
+                    description: 'File path, can be relative to workspace root'
                 }
             },
             required: ['file_path']
         });
-        
-        // 写入文件
+
+        // Write file
         toolManager.registerTool('write-file', this.writeFile.bind(this), {
-            description: '写入文件内容',
+            description: 'Write file content',
             parameters: {
                 file_path: {
                     type: 'string',
-                    description: '文件路径，可以是相对于工作区根目录的路径'
+                    description: 'File path, can be relative to workspace root'
                 },
                 content: {
                     type: 'string',
-                    description: '要写入的文件内容'
+                    description: 'Content to write to the file'
                 }
             },
             required: ['file_path', 'content']
         });
-        
-        // 列出目录
+
+        // List directory
         toolManager.registerTool('list-directory', this.listDirectory.bind(this), {
-            description: '列出目录内容',
+            description: 'List directory contents',
             parameters: {
                 directory_path: {
                     type: 'string',
-                    description: '目录路径，可以是相对于工作区根目录的路径'
+                    description: 'Directory path, can be relative to workspace root'
                 }
             },
             required: ['directory_path']
         });
-        
-        // 搜索文件
+
+        // Search files
         toolManager.registerTool('search-files', this.searchFiles.bind(this), {
-            description: '搜索文件',
+            description: 'Search files',
             parameters: {
                 pattern: {
                     type: 'string',
-                    description: '搜索模式，例如 "**/*.js"'
+                    description: 'Search pattern, e.g. "**/*.js"'
                 },
                 directory_path: {
                     type: 'string',
-                    description: '目录路径，可以是相对于工作区根目录的路径'
+                    description: 'Directory path, can be relative to workspace root'
                 },
                 include_hidden: {
                     type: 'boolean',
-                    description: '是否包含隐藏文件'
+                    description: 'Whether to include hidden files'
                 }
             },
             required: ['pattern']
         });
-        
-        // 获取当前文件
+
+        // Get current file
         toolManager.registerTool('get-current-file', this.getCurrentFile.bind(this), {
-            description: '获取当前打开的文件',
+            description: 'Get current open file',
             parameters: {},
             required: []
         });
