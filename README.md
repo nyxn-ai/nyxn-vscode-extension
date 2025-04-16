@@ -28,7 +28,7 @@ A powerful VS Code extension that integrates Google's Gemini AI to provide intel
 ## Installation
 
 1. Install the extension from the VS Code Marketplace or download the VSIX file from the [releases page](https://github.com/nyxn-ai/nyxn-vscode-extension/releases)
-2. Configure your Gemini API key in the extension settings
+2. Configure your Gemini API key in the extension settings or create a `.env` file in the extension directory with your API key (see `.env.example` for reference)
 3. Restart VS Code to activate the extension
 
 ## Configuration
