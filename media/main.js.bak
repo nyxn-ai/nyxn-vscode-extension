@@ -16,7 +16,7 @@
     // 初始化
     let isLoading = false;
 
-    // Send消息
+    // 发送消息
     function sendMessage() {
         const text = userInput.value.trim();
         if (text && !isLoading) {
@@ -28,7 +28,7 @@
         }
     }
 
-    // 监听Send按钮点击
+    // 监听发送按钮点击
     sendButton.addEventListener('click', sendMessage);
 
     // 监听Enter键
@@ -39,16 +39,16 @@
         }
     });
 
-    // Clear History
+    // 清除历史
     clearButton.addEventListener('click', () => {
-        if (confirm('Are you sure you want to clear all chat history？')) {
+        if (confirm('确定要清除所有聊天历史吗？')) {
             vscode.postMessage({
                 command: 'clearHistory'
             });
         }
     });
 
-    // Get Context
+    // 获取上下文
     contextButton.addEventListener('click', () => {
         vscode.postMessage({
             command: 'getFullContext'
@@ -56,21 +56,21 @@
 
         // 显示加载状态
         contextButton.disabled = true;
-        contextButton.textContent = 'Loading...';
+        contextButton.textContent = '加载中...';
 
         // 5秒后恢复按钮状态
         setTimeout(() => {
             contextButton.disabled = false;
-            contextButton.textContent = 'Get Context';
+            contextButton.textContent = '获取上下文';
         }, 5000);
     });
 
-    // CloseToolResult
+    // 关闭工具结果
     closeToolResults.addEventListener('click', () => {
         toolResults.classList.add('hidden');
     });
 
-    // 处理Tool调用
+    // 处理工具调用
     function handleToolCall(toolCallElement) {
         const toolCallButtons = toolCallElement.querySelectorAll('.tool-call-button');
 
@@ -88,9 +88,9 @@
 
                 // 禁用按钮并显示加载状态
                 button.disabled = true;
-                button.textContent = 'Executing...';
+                button.textContent = '执行中...';
 
-                // SendToolExecute请求
+                // 发送工具执行请求
                 vscode.postMessage({
                     command: 'executeTool',
                     toolName,
@@ -102,10 +102,10 @@
 
     // 处理Markdown
     function processMarkdown(text) {
-        // 处理Tool调用
+        // 处理工具调用
         const toolCallRegex = /<tool>\s*<name>(.*?)<\/name>\s*<parameters>([\s\S]*?)<\/parameters>\s*<\/tool>/g;
         let processedText = text.replace(toolCallRegex, (match, toolName, parametersContent) => {
-            // 解析Param
+            // 解析参数
             const paramRegex = /<param\s+name="([^"]+)">([\s\S]*?)<\/param>/g;
             let paramMatch;
             const params = {};
@@ -118,13 +118,13 @@
                 paramHtml += `<div class="tool-param"><span class="param-name">${escapeHtml(paramName)}</span>: <span class="param-value">${escapeHtml(paramValue)}</span></div>`;
             }
 
-            // 将Param序列化为JSON字符串
+            // 将参数序列化为JSON字符串
             const paramsJson = JSON.stringify(params);
 
             return `<div class="tool-call">
                 <div class="tool-call-header">
-                    <span class="tool-name">Tool: ${escapeHtml(toolName)}</span>
-                    <button class="tool-call-button" data-tool="${escapeHtml(toolName)}" data-parameters='${escapeHtml(paramsJson)}'>Execute</button>
+                    <span class="tool-name">工具: ${escapeHtml(toolName)}</span>
+                    <button class="tool-call-button" data-tool="${escapeHtml(toolName)}" data-parameters='${escapeHtml(paramsJson)}'>执行</button>
                 </div>
                 <div class="tool-call-params">
                     ${paramHtml}
@@ -132,12 +132,12 @@
             </div>`;
         });
 
-        // 处理ToolResult
+        // 处理工具结果
         const toolResultRegex = /<tool-result\s+name="([^"]+)">\s*([\s\S]*?)\s*<\/tool-result>/g;
         processedText = processedText.replace(toolResultRegex, (match, toolName, resultContent) => {
             return `<div class="tool-result">
                 <div class="tool-result-header">
-                    <span class="tool-name">ToolResult: ${escapeHtml(toolName)}</span>
+                    <span class="tool-name">工具结果: ${escapeHtml(toolName)}</span>
                 </div>
                 <div class="tool-result-content">
                     <pre>${escapeHtml(resultContent)}</pre>
@@ -145,12 +145,12 @@
             </div>`;
         });
 
-        // 处理ToolError
+        // 处理工具错误
         const toolErrorRegex = /<tool-error\s+name="([^"]+)">\s*([\s\S]*?)\s*<\/tool-error>/g;
         processedText = processedText.replace(toolErrorRegex, (match, toolName, errorContent) => {
             return `<div class="tool-error">
                 <div class="tool-error-header">
-                    <span class="tool-name">ToolError: ${escapeHtml(toolName)}</span>
+                    <span class="tool-name">工具错误: ${escapeHtml(toolName)}</span>
                 </div>
                 <div class="tool-error-content">
                     <pre>${escapeHtml(errorContent)}</pre>
@@ -164,8 +164,8 @@
             return `<div class="code-block">
                 <div class="code-header">
                     <span class="code-language">${language || 'code'}</span>
-                    <button class="copy-button">Copy</button>
-                    <button class="insert-button">Insert to Editor</button>
+                    <button class="copy-button">复制</button>
+                    <button class="insert-button">插入到编辑器</button>
                 </div>
                 <pre><code class="${language}">${escapeHtml(code)}</code></pre>
             </div>`;
@@ -212,9 +212,9 @@
                             const codeBlock = e.target.closest('.code-block');
                             const code = codeBlock.querySelector('code').textContent;
                             navigator.clipboard.writeText(code);
-                            button.textContent = 'Copied';
+                            button.textContent = '已复制';
                             setTimeout(() => {
-                                button.textContent = 'Copy';
+                                button.textContent = '复制';
                             }, 2000);
                         });
                     });
@@ -230,7 +230,7 @@
                         });
                     });
 
-                    // Tool调用按钮
+                    // 工具调用按钮
                     handleToolCall(messageDiv);
                 }, 0);
             } else {
@@ -245,7 +245,7 @@
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    // 显示ToolResult
+    // 显示工具结果
     function showToolResults(results) {
         toolContent.innerHTML = '';
 
@@ -253,17 +253,17 @@
             const resultDiv = document.createElement('div');
             resultDiv.className = 'tool-execution-result';
 
-            // Tool名称和Param
+            // 工具名称和参数
             const headerDiv = document.createElement('div');
             headerDiv.className = 'tool-execution-header';
-            headerDiv.innerHTML = `<strong>Tool:</strong> ${escapeHtml(result.name)}`;
+            headerDiv.innerHTML = `<strong>工具:</strong> ${escapeHtml(result.name)}`;
             resultDiv.appendChild(headerDiv);
 
-            // Param
+            // 参数
             if (result.parameters) {
                 const paramsDiv = document.createElement('div');
                 paramsDiv.className = 'tool-execution-params';
-                paramsDiv.innerHTML = '<strong>Param:</strong>';
+                paramsDiv.innerHTML = '<strong>参数:</strong>';
 
                 const paramsList = document.createElement('ul');
                 for (const [key, value] of Object.entries(result.parameters)) {
@@ -276,21 +276,21 @@
                 resultDiv.appendChild(paramsDiv);
             }
 
-            // Result或Error
+            // 结果或错误
             const contentDiv = document.createElement('div');
             contentDiv.className = result.error ? 'tool-execution-error' : 'tool-execution-content';
 
             if (result.error) {
-                contentDiv.innerHTML = `<strong>Error:</strong> <pre>${escapeHtml(result.error)}</pre>`;
+                contentDiv.innerHTML = `<strong>错误:</strong> <pre>${escapeHtml(result.error)}</pre>`;
             } else {
-                contentDiv.innerHTML = `<strong>Result:</strong> <pre>${escapeHtml(typeof result.result === 'object' ? JSON.stringify(result.result, null, 2) : String(result.result))}</pre>`;
+                contentDiv.innerHTML = `<strong>结果:</strong> <pre>${escapeHtml(typeof result.result === 'object' ? JSON.stringify(result.result, null, 2) : String(result.result))}</pre>`;
             }
 
             resultDiv.appendChild(contentDiv);
             toolContent.appendChild(resultDiv);
         });
 
-        // 显示ToolResult面板
+        // 显示工具结果面板
         toolResults.classList.remove('hidden');
     }
 
@@ -298,7 +298,7 @@
     function showLoading() {
         isLoading = true;
         sendButton.disabled = true;
-        sendButton.textContent = 'Thinking...';
+        sendButton.textContent = '思考中...';
 
         const loadingDiv = document.createElement('div');
         loadingDiv.className = 'message assistant loading';
@@ -311,7 +311,7 @@
     function hideLoading() {
         isLoading = false;
         sendButton.disabled = false;
-        sendButton.textContent = 'Send';
+        sendButton.textContent = '发送';
 
         const loadingDiv = chatContainer.querySelector('.loading');
         if (loadingDiv) {
@@ -319,7 +319,7 @@
         }
     }
 
-    // 显示Error消息
+    // 显示错误消息
     function showError(message) {
         const errorDiv = document.createElement('div');
         errorDiv.className = 'error-message';
@@ -355,7 +355,7 @@
                 break;
 
             case 'toolResult':
-                // 单个ToolExecuteResult
+                // 单个工具执行结果
                 showToolResults([{
                     name: message.toolName,
                     parameters: message.parameters,

@@ -9,3 +9,7 @@ vsc-extension-quickstart.md
 **/*.ts
 .github/**
 test/**
+.env
+*.vsix
+fix_chinese.sh
+*.bak

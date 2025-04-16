@@ -1,6 +1,6 @@
 # Nyxn AI Assistant
 
-A powerful VS Code extension that integrates Google's Gemini AI to provide intelligent code assistance, similar to Augment Agent. This extension leverages the Gemini API to help developers write, understand, and optimize code more efficiently.
+A powerful VS Code extension that integrates Google's Gemini AI to provide intelligent code assistance, similar to Claude Agent. This extension leverages the Gemini API to help developers write, understand, and optimize code more efficiently, with advanced tool usage capabilities.
 
 <p align="center">
   <img src="https://img.shields.io/badge/VS%20Code-Extension-blue" alt="VS Code Extension">
@@ -15,6 +15,10 @@ A powerful VS Code extension that integrates Google's Gemini AI to provide intel
 - **Code Generation**: Generate code snippets based on natural language descriptions
 - **Code Explanation**: Get detailed explanations of complex code segments
 - **Seamless Integration**: Conveniently accessible from the VS Code sidebar
+- **Tool Usage**: Use tools to interact with your codebase, similar to Claude Agent
+- **File Operations**: Read and write files, list directories, search files
+- **Code Search**: Search code, find symbols, get document symbols
+- **Diagnostics**: Get diagnostics, code actions, and apply fixes
 
 ## Requirements
 
@@ -34,6 +38,9 @@ This extension contributes the following settings:
 - `nyxn-ai-assistant.apiKey`: Your Gemini API key
 - `nyxn-ai-assistant.model`: The Gemini model to use (default: `gemini-2.0-flash`)
   - Available options: `gemini-2.0-flash`, `gemini-1.5-flash`, `gemini-1.5-pro`
+- `nyxn-ai-assistant.systemPrompt`: Custom system prompt for the AI assistant
+- `nyxn-ai-assistant.enableTools`: Enable tools for the AI assistant (default: `true`)
+- `nyxn-ai-assistant.maxContextDepth`: Maximum depth for project structure context (default: `3`)
 
 ## Usage
 
@@ -43,6 +50,18 @@ This extension contributes the following settings:
 4. View the AI's response in the chat interface
 5. Use the "Copy" button to copy code snippets to your clipboard
 6. Use the "Insert to Editor" button to insert code directly into your active editor
+7. Use the "Clear History" button to clear the chat history
+8. Use the "Get Context" button to refresh the current context
+
+### Using Tools
+
+The AI assistant can use various tools to help you with your tasks:
+
+- **File Tools**: Read and write files, list directories, search files
+- **Code Search Tools**: Search code, find symbols, get document symbols
+- **Diagnostics Tools**: Get diagnostics, get code actions, apply code actions
+
+When the AI suggests using a tool, you'll see an "Execute" button that you can click to run the tool.
 
 ## Examples
 
@@ -54,6 +73,10 @@ Here are some examples of what you can ask the Nyxn AI Assistant:
 - "Convert this JavaScript code to TypeScript"
 - "Find bugs in this code"
 - "Suggest unit tests for this function"
+- "Read the file package.json and explain its contents"
+- "Search for all functions that use the 'fetch' API in this project"
+- "Show me all errors in the current file"
+- "Create a new file with a basic Express server setup"
 
 ## Development
 

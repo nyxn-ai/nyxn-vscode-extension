@@ -1,13 +1,55 @@
 const vscode = require('vscode');
 const path = require('path');
 const GeminiService = require('./geminiService');
+const ToolManager = require('./tools/toolManager');
+const FileTools = require('./tools/fileTools');
+const CodeSearchTools = require('./tools/codeSearchTools');
+const DiagnosticsTools = require('./tools/diagnosticsTools');
+const ContextManager = require('./contextManager');
 
+/**
+ * Nyxn Webview Provider
+ * Handles UI and user interaction
+ */
 class NyxnWebviewProvider {
+    /**
+     * Initialize Webview Provider
+     * @param {vscode.ExtensionContext} context Extension context
+     */
     constructor(context) {
         this.context = context;
-        this.geminiService = new GeminiService();
+
+        // Initialize tool manager
+        this.toolManager = new ToolManager();
+
+        // Initialize context manager
+        this.contextManager = new ContextManager(context);
+
+        // Initialize tools
+        this.initializeTools();
+
+        // Initialize Gemini service
+        this.geminiService = new GeminiService(this.toolManager, this.contextManager);
+
         this._view = null;
         this.chatHistory = [];
+    }
+
+    /**
+     * Initialize tools
+     */
+    initializeTools() {
+        // File tools
+        const fileTools = new FileTools(this.context);
+        fileTools.registerTools(this.toolManager);
+
+        // Code search tools
+        const codeSearchTools = new CodeSearchTools(this.context);
+        codeSearchTools.registerTools(this.toolManager);
+
+        // Diagnostics tools
+        const diagnosticsTools = new DiagnosticsTools(this.context);
+        diagnosticsTools.registerTools(this.toolManager);
     }
 
     resolveWebviewView(webviewView) {
@@ -28,20 +70,71 @@ class NyxnWebviewProvider {
                 case 'sendMessage':
                     await this._handleUserMessage(message.text);
                     break;
+
                 case 'getCodeContext':
                     const codeContext = await this.geminiService.getCodeContext();
-                    webviewView.webview.postMessage({ 
-                        command: 'codeContext', 
-                        context: codeContext 
+                    webviewView.webview.postMessage({
+                        command: 'codeContext',
+                        context: codeContext
                     });
                     break;
+
+                case 'getFullContext':
+                    try {
+                        const fullContext = await this.geminiService.getFullContext();
+                        webviewView.webview.postMessage({
+                            command: 'fullContext',
+                            context: fullContext
+                        });
+                    } catch (error) {
+                        console.error('Error getting full context:', error);
+                        webviewView.webview.postMessage({
+                            command: 'error',
+                            message: `获取上下文失败: ${error.message}`
+                        });
+                    }
+                    break;
+
+                case 'clearHistory':
+                    this.chatHistory = [];
+                    this.geminiService.clearChatHistory();
+                    this._updateChatInWebview();
+                    break;
+
                 case 'insertCode':
                     this._insertCodeToEditor(message.code);
+                    break;
+
+                case 'executeTool':
+                    try {
+                        const { toolName, parameters } = message;
+                        if (!this.toolManager) {
+                            throw new Error('工具管理器未初始化');
+                        }
+
+                        const result = await this.toolManager.executeTool(toolName, parameters);
+                        webviewView.webview.postMessage({
+                            command: 'toolResult',
+                            toolName,
+                            parameters,
+                            result
+                        });
+                    } catch (error) {
+                        console.error('Error executing tool:', error);
+                        webviewView.webview.postMessage({
+                            command: 'error',
+                            message: `执行工具失败: ${error.message}`
+                        });
+                    }
                     break;
             }
         });
     }
 
+    /**
+     * Handle user message
+     * @param {string} text User message
+     */
     async _handleUserMessage(text) {
         if (!text.trim()) return;
 
@@ -52,25 +145,45 @@ class NyxnWebviewProvider {
         // Show loading state
         this._view.webview.postMessage({ command: 'startLoading' });
 
-        // Get code context
-        const codeContext = await this.geminiService.getCodeContext();
+        try {
+            // Get full context
+            const context = await this.geminiService.getFullContext();
 
-        // Call Gemini API
-        const response = await this.geminiService.generateContent(text, codeContext);
+            // Call Gemini API
+            const response = await this.geminiService.generateContent(text, context, true);
 
-        // Stop loading state
-        this._view.webview.postMessage({ command: 'stopLoading' });
+            // Stop loading state
+            this._view.webview.postMessage({ command: 'stopLoading' });
 
-        if (response.error) {
-            // Handle error
-            this.chatHistory.push({ role: 'assistant', content: `Error: ${response.error}` });
-        } else {
-            // Add AI response to history
-            this.chatHistory.push({ role: 'assistant', content: response.text });
+            if (response.error) {
+                // Handle error
+                this.chatHistory.push({ role: 'assistant', content: `Error: ${response.error}` });
+            } else {
+                // Add AI response to history
+                this.chatHistory.push({ role: 'assistant', content: response.text });
+
+                // If there are tool call results, show tool information
+                if (response.toolResults && response.toolResults.length > 0) {
+                    // Send tool results to frontend
+                    this._view.webview.postMessage({
+                        command: 'toolResults',
+                        results: response.toolResults
+                    });
+                }
+            }
+
+            // Update chat interface
+            this._updateChatInWebview();
+        } catch (error) {
+            console.error('Error handling user message:', error);
+
+            // Stop loading state
+            this._view.webview.postMessage({ command: 'stopLoading' });
+
+            // Add error message
+            this.chatHistory.push({ role: 'assistant', content: `Error: ${error.message}` });
+            this._updateChatInWebview();
         }
-
-        // Update chat interface
-        this._updateChatInWebview();
     }
 
     _updateChatInWebview() {
@@ -82,6 +195,10 @@ class NyxnWebviewProvider {
         }
     }
 
+    /**
+     * Insert code to editor
+     * @param {string} code Code
+     */
     _insertCodeToEditor(code) {
         const editor = vscode.window.activeTextEditor;
         if (editor) {
@@ -91,6 +208,42 @@ class NyxnWebviewProvider {
         }
     }
 
+    /**
+     * Clear chat history
+     */
+    clearChatHistory() {
+        this.chatHistory = [];
+        if (this.geminiService) {
+            this.geminiService.clearChatHistory();
+        }
+        this._updateChatInWebview();
+    }
+
+    /**
+     * Get full context
+     * @returns {Promise<Object>} Context object
+     */
+    async getFullContext() {
+        if (this.geminiService) {
+            return await this.geminiService.getFullContext();
+        }
+        return null;
+    }
+
+    /**
+     * Update configuration
+     */
+    updateConfiguration() {
+        if (this.geminiService) {
+            this.geminiService.initialize();
+        }
+    }
+
+    /**
+     * Get HTML for webview
+     * @param {vscode.Webview} webview Webview object
+     * @returns {string} HTML content
+     */
     _getHtmlForWebview(webview) {
         // Get media file paths
         const scriptUri = webview.asWebviewUri(
@@ -103,6 +256,10 @@ class NyxnWebviewProvider {
         // Use nonce for security
         const nonce = getNonce();
 
+        // Get available tools list
+        const availableTools = this.toolManager ? this.toolManager.getAvailableTools() : [];
+        const toolsJson = JSON.stringify(availableTools);
+
         return `<!DOCTYPE html>
         <html lang="en">
         <head>
@@ -114,12 +271,37 @@ class NyxnWebviewProvider {
         </head>
         <body>
             <div class="container">
+                <div class="header">
+                    <h2>Nyxn AI Assistant</h2>
+                    <div class="actions">
+                        <button id="clear-button" title="Clear chat history">Clear History</button>
+                        <button id="context-button" title="Get current context">Get Context</button>
+                    </div>
+                </div>
+
                 <div id="chat-container" class="chat-container"></div>
+
                 <div class="input-container">
                     <textarea id="user-input" placeholder="Enter your question or request..."></textarea>
-                    <button id="send-button">Send</button>
+                    <div class="button-container">
+                        <button id="send-button">Send</button>
+                    </div>
+                </div>
+
+                <div id="tool-results" class="tool-results hidden">
+                    <div class="tool-header">
+                        <h3>Tool Execution Results</h3>
+                        <button id="close-tool-results">Close</button>
+                    </div>
+                    <div id="tool-content"></div>
                 </div>
             </div>
+
+            <!-- Tool data -->
+            <script nonce="${nonce}">
+                window.availableTools = ${toolsJson};
+            </script>
+
             <script nonce="${nonce}" src="${scriptUri}"></script>
         </body>
         </html>`;
