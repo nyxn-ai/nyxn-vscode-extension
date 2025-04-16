@@ -104,6 +104,8 @@ button:disabled {
 #send-button {
     margin-left: 8px;
     padding: 8px 16px;
+    min-width: 80px;
+    min-height: 36px;
     font-size: 14px;
     font-weight: 500;
     border-radius: 6px;
@@ -112,12 +114,16 @@ button:disabled {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     transition: all 0.3s ease;
     cursor: pointer;
+    z-index: 10; /* Ensure button is above other elements */
+    position: relative; /* Enable z-index */
 }
 
 .button-container {
     display: flex;
     align-items: center;
     justify-content: center;
+    min-width: 90px; /* Ensure container is wide enough */
+    min-height: 40px; /* Ensure container is tall enough */
 }
 
 .message {

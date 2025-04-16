@@ -2,7 +2,7 @@
   "name": "nyxn-ai-assistant",
   "displayName": "Nyxn AI Assistant",
   "description": "VS Code extension similar to Augment Agent, using Gemini API for interaction",
-  "version": "0.1.3",
+  "version": "0.1.5",
   "publisher": "nyxn-ai",
   "author": {
     "name": "Nyxn AI"
