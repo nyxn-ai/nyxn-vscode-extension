@@ -317,7 +317,7 @@ class NyxnWebviewProvider {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}' 'unsafe-inline'; connect-src vscode-webview-resource:; img-src ${webview.cspSource} https:;">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}'; connect-src vscode-webview-resource:; img-src ${webview.cspSource} https:;">
             <link href="${styleUri}" rel="stylesheet">
             <title>Nyxn AI Assistant</title>
         </head>
@@ -336,16 +336,9 @@ class NyxnWebviewProvider {
                 <div class="input-container">
                     <textarea id="user-input" placeholder="Enter your question or request..."></textarea>
                     <div class="button-container">
-                        <button id="send-button" type="button" class="send-button-class" onclick="sendMessage()">Send</button>
-                        <button id="send-button-backup" type="button" class="send-button-class" style="margin-left: 5px;">Send (Backup)</button>
+                        <button id="send-button">Send</button>
                     </div>
                 </div>
-
-                <!-- Add a simple form as another fallback -->
-                <form id="message-form" style="display: none;">
-                    <input type="text" id="message-input" />
-                    <input type="submit" value="Send Form" />
-                </form>
 
                 <div id="tool-results" class="tool-results hidden">
                     <div class="tool-header">

@@ -7,9 +7,6 @@
     const chatContainer = document.getElementById('chat-container');
     const userInput = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
-    const sendButtonBackup = document.getElementById('send-button-backup');
-    const messageForm = document.getElementById('message-form');
-    const messageInput = document.getElementById('message-input');
     const clearButton = document.getElementById('clear-button');
     const contextButton = document.getElementById('context-button');
     const toolResults = document.getElementById('tool-results');
@@ -20,8 +17,6 @@
     console.log('- chatContainer:', !!chatContainer);
     console.log('- userInput:', !!userInput);
     console.log('- sendButton:', !!sendButton);
-    console.log('- sendButtonBackup:', !!sendButtonBackup);
-    console.log('- messageForm:', !!messageForm);
     console.log('- clearButton:', !!clearButton);
 
     // Initialize
@@ -82,42 +77,7 @@
         sendMessage();
     });
 
-    // Add event listeners to backup button
-    if (sendButtonBackup) {
-        console.log('Adding event listeners to backup button');
-        sendButtonBackup.addEventListener('click', function(event) {
-            console.log('Backup send button clicked');
-            sendMessage();
-        });
-
-        sendButtonBackup.addEventListener('mousedown', function(event) {
-            console.log('Backup send button mousedown detected');
-            sendMessage();
-        });
-    } else {
-        console.error('Backup send button not found');
-    }
-
-    // Add form submit event listener
-    if (messageForm) {
-        console.log('Adding submit event listener to form');
-        messageForm.style.display = 'block'; // Make form visible for testing
-
-        messageForm.addEventListener('submit', function(event) {
-            event.preventDefault();
-            console.log('Form submitted');
-
-            const text = messageInput.value.trim();
-            if (text) {
-                console.log('Sending message from form:', text);
-                vscode.postMessage({
-                    command: 'sendMessage',
-                    text: text
-                });
-                messageInput.value = '';
-            }
-        });
-    }
+    // No backup buttons or forms
 
     // Listen for Enter key
     userInput.addEventListener('keydown', (e) => {
@@ -499,19 +459,5 @@
         return true; // Prevents the default error handling
     };
 
-    // Add a direct test button to the DOM
-    const testButton = document.createElement('button');
-    testButton.textContent = 'Test Direct Send';
-    testButton.style.position = 'fixed';
-    testButton.style.bottom = '10px';
-    testButton.style.left = '10px';
-    testButton.style.zIndex = '1000';
-    testButton.onclick = function() {
-        console.log('Test button clicked');
-        vscode.postMessage({
-            command: 'sendMessage',
-            text: 'This is a test message from the direct test button'
-        });
-    };
-    document.body.appendChild(testButton);
+    // No test button
 });
