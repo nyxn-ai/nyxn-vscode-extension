@@ -19,6 +19,7 @@ A powerful VS Code extension that integrates Google's Gemini AI to provide intel
 - **File Operations**: Read and write files, list directories, search files
 - **Code Search**: Search code, find symbols, get document symbols
 - **Diagnostics**: Get diagnostics, code actions, and apply fixes
+- **Git Integration**: Complete Git version control operations including status, branches, commits, push/pull
 
 ## Requirements
 
@@ -60,6 +61,7 @@ The AI assistant can use various tools to help you with your tasks:
 - **File Tools**: Read and write files, list directories, search files
 - **Code Search Tools**: Search code, find symbols, get document symbols
 - **Diagnostics Tools**: Get diagnostics, get code actions, apply code actions
+- **Git Tools**: Complete Git version control operations
 
 When the AI suggests using a tool, you'll see an "Execute" button that you can click to run the tool.
 
@@ -77,6 +79,10 @@ Here are some examples of what you can ask the Nyxn AI Assistant:
 - "Search for all functions that use the 'fetch' API in this project"
 - "Show me all errors in the current file"
 - "Create a new file with a basic Express server setup"
+- "Check the current Git status and show me what files have changed"
+- "Create a new branch called 'feature/new-component'"
+- "Commit all changes with message 'Add new feature'"
+- "Show me the last 5 commits in this repository"
 
 ## Development
 

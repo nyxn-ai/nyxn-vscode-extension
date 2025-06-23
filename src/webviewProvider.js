@@ -6,6 +6,7 @@ const FileTools = require('./tools/fileTools');
 const CodeSearchTools = require('./tools/codeSearchTools');
 const DiagnosticsTools = require('./tools/diagnosticsTools');
 const CodeGenerationTools = require('./tools/codeGenerationTools');
+const GitTools = require('./tools/gitTools');
 const ContextManager = require('./contextManager');
 
 /**
@@ -64,6 +65,10 @@ class NyxnWebviewProvider {
         // Code generation tools (similar to Claude and Augment)
         const codeGenerationTools = new CodeGenerationTools(this.context);
         codeGenerationTools.registerTools(this.toolManager);
+
+        // Git tools
+        const gitTools = new GitTools(this.context);
+        gitTools.registerTools(this.toolManager);
     }
 
     resolveWebviewView(webviewView) {

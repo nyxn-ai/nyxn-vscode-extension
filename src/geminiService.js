@@ -65,6 +65,7 @@ You can use tools to perform various operations, such as:
 - Getting diagnostic information
 - Generating and inserting code
 - Analyzing project structure
+- Git version control operations (status, branches, commits, push/pull)
 
 When using tools, please use the following format:
 <tool>
@@ -87,6 +88,17 @@ For code generation and editing:
 2. Use the 'replace-selected-code' tool to replace selected code
 3. Use the 'create-file' tool to create new files
 4. Use the 'get-project-structure' tool to understand the project structure
+
+For Git version control:
+1. Use 'git-status' to check current repository status
+2. Use 'git-branches' to list available branches
+3. Use 'git-create-branch' to create new branches
+4. Use 'git-checkout' to switch branches
+5. Use 'git-add' to stage files for commit
+6. Use 'git-commit' to commit changes
+7. Use 'git-push' and 'git-pull' for remote operations
+8. Use 'git-log' to view commit history
+9. Use 'git-diff' to see file differences
 
 When generating code:
 - Follow the project's coding style and conventions
